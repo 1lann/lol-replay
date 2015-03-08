@@ -4,13 +4,22 @@
 
 module:testrunner
 
-GET     /                                       App.Index
+GET     /                                     				 	 					App.Index
 
 # Ignore favicon requests
-GET     /favicon.ico                            404
+GET     /favicon.ico                           										404
 
 # Map static resources from the /app/public folder to the /public path
-GET     /public/*filepath                       Static.Serve("public")
+GET     /public/*filepath                       									Static.Serve("public")
+
+GET     /record/:region/:gameId/:encryptionKey										App.Record
+
+GET		/observer-mode/rest/consumer/version										App.Version
+GET		/observer-mode/rest/consumer/getGameMetaData/:region/:id/*ignore 			App.Metadata
+GET		/observer-mode/rest/consumer/getLastChunkInfo/:region/:id/:end/*ignore		App.LastChunkInfo
+GET		/observer-mode/rest/consumer/getGameDataChunk/:region/:id/:frame/*ignore	App.DataChunk
+GET		/observer-mode/rest/consumer/getKeyFrame/:region/:id/:frame/*ignore			App.KeyFrame
+
 
 # Catch all
-*       /:controller/:action                    :controller.:action
+*       /*all                   													App.Catch
