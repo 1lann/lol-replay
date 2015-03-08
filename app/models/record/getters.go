@@ -143,8 +143,6 @@ func getLastChunkInfo(region, gameId string) ChunkInfo {
 		return ChunkInfo{}
 	}
 
-	revel.INFO.Println(string(resp))
-
 	result := ChunkInfo{}
 	err := json.Unmarshal(resp, &result)
 	if err != nil {
