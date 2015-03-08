@@ -144,6 +144,9 @@ func recordFrames(region, gameId string) {
 
 			lastChunk = chunk.CurrentChunk
 			lastKeyFrame = chunk.CurrentKeyFrame
+
+			getChunkFrame(region, gameId, chunk.CurrentChunk)
+			getKeyFrame(region, gameId, chunk.CurrentKeyFrame)
 		}
 
 		if chunk.CurrentChunk > lastChunk {
