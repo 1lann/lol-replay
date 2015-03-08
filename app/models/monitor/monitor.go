@@ -48,6 +48,8 @@ func requestURL(url string) ([]byte, bool) {
 		return []byte{}, false
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode == 404 {
 		return []byte{}, false
 	}
@@ -57,7 +59,6 @@ func requestURL(url string) ([]byte, bool) {
 		return []byte{}, false
 	}
 
-	defer resp.Body.Close()
 	contents, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		revel.ERROR.Println("Failed to read content from: " + url)

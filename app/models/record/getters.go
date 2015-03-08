@@ -53,12 +53,13 @@ func requestURL(url string) ([]byte, bool) {
 			return []byte{}, false
 		}
 
+		defer resp.Body.Close()
+
 		if resp.StatusCode != 200 {
 			revel.WARN.Println("Not 200, status code: " + resp.Status)
 			continue
 		}
 
-		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			revel.ERROR.Println("Failed to read content from: " + url)
