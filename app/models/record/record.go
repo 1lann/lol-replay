@@ -149,6 +149,10 @@ func recordFrames(region, gameId string) {
 			getKeyFrame(region, gameId, strconv.Itoa(chunk.CurrentKeyFrame))
 		}
 
+		if chunk.StartGameChunk > firstChunk {
+			firstChunk = chunk.StartGameChunk
+		}
+
 		if chunk.CurrentChunk > lastChunk {
 			for i := lastChunk + 1; i <= chunk.CurrentChunk; i++ {
 				getChunkFrame(region, gameId, strconv.Itoa(i))
