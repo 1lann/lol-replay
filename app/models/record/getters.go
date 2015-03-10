@@ -98,6 +98,10 @@ func getMetadata(region, gameId string) Metadata {
 }
 
 func getChunkFrame(region, gameId, frame string) {
+	if frame == "0" {
+		return
+	}
+
 	recordKey := "/getGameDataChunk/" + region + "/" + gameId + "/" + frame
 	if existsRecording(region, gameId, recordKey) {
 		return
@@ -116,6 +120,10 @@ func getChunkFrame(region, gameId, frame string) {
 }
 
 func getKeyFrame(region, gameId, frame string) {
+	if frame == "0" {
+		return
+	}
+
 	recordKey := "/getKeyFrame/" + region + "/" + gameId + "/" + frame
 	if existsRecording(region, gameId, recordKey) {
 		return
