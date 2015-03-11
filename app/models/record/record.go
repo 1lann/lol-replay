@@ -185,9 +185,18 @@ func recordFrames(region, gameId string) {
 	}
 }
 
-func appendJustRecorded(region, gameId) {
+func appendJustRecorded(region, gameId string) {
 	justRecorded = append(justRecorded, region+":"+gameId)
 	justRecorded = justRecorded[1:]
+}
+
+func inJustRecorded(region, gameId string) bool {
+	for _, v := range justRecorded {
+		if v == region+":"+gameId {
+			return true
+		}
+	}
+	return false
 }
 
 func asyncRecord(region, gameId, encryptionKey string) {
@@ -218,7 +227,7 @@ func asyncRecord(region, gameId, encryptionKey string) {
 func Record(region, gameId, encryptionKey string) bool {
 	if _, ok := recording[region+":"+gameId]; ok {
 		return false
-	} else if _, ok := justRecorded[region+":"+gameId]; ok {
+	} else if inJustRecorded(region, gameId) {
 		return false
 	} else {
 		recording[region+":"+gameId] = make(map[string]string)
