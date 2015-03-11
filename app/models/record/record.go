@@ -21,6 +21,7 @@ var platformURLs map[string]string = map[string]string{
 
 var version string // Version functions in getters.go
 var recording map[string]map[string]string = make(map[string]map[string]string)
+var justRecorded []string = []string{"0", "0", "0", "0", "0"}
 
 func writeRecording(region, gameId, key string, value []byte) {
 	currentRecording := recording[region+":"+gameId]
@@ -184,6 +185,11 @@ func recordFrames(region, gameId string) {
 	}
 }
 
+func appendJustRecorded(region, gameId) {
+	justRecorded = append(justRecorded, region+":"+gameId)
+	justRecorded = justRecorded[1:]
+}
+
 func asyncRecord(region, gameId, encryptionKey string) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -205,11 +211,14 @@ func asyncRecord(region, gameId, encryptionKey string) {
 	recordFrames(region, gameId)
 
 	revel.INFO.Println("Recording complete for: " + region + ":" + gameId)
+	appendJustRecorded(region, gameId)
 	delete(recording, region+":"+gameId)
 }
 
 func Record(region, gameId, encryptionKey string) bool {
 	if _, ok := recording[region+":"+gameId]; ok {
+		return false
+	} else if _, ok := justRecorded[region+":"+gameId]; ok {
 		return false
 	} else {
 		recording[region+":"+gameId] = make(map[string]string)
