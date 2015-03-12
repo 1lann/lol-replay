@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/revel/revel"
 	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -13,6 +14,8 @@ type Game struct {
 	EncryptionKey string
 	Time          int64
 }
+
+const maxGameStore = 50
 
 func GameList() []Game {
 	data, err := ioutil.ReadFile(revel.BasePath + "/history.json")
@@ -49,6 +52,21 @@ func StoreGame(region, gameId, encryptionKey string) {
 	newGames := []Game{game}
 
 	games = append(newGames, games...)
+
+	if len(games) > maxGameStore {
+		deleteGames := games[maxGameStore:]
+
+		for _, value := range deleteGames {
+			err := os.Remove(revel.BasePath + "/replays/" + value.Region + "-" +
+				value.GameId)
+			if err != nil {
+				revel.ERROR.Println("Error while deleting: " + value.Region +
+					"-" + value.GameId)
+			}
+		}
+
+		games = games[:maxGameStore]
+	}
 
 	data, err := json.Marshal(games)
 	if err != nil {
