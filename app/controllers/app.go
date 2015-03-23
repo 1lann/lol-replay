@@ -1,13 +1,61 @@
 package controllers
 
 import (
+	"bytes"
+	"compress/gzip"
+	// "encoding/base64"
 	"github.com/revel/revel"
+	"golang.org/x/crypto/blowfish"
+	"io/ioutil"
+	"math"
 	"net/http"
 	"replay/app/models/history"
 	"replay/app/models/record"
 	"replay/app/models/replay"
 	"time"
 )
+
+const testKey = "3BRxZaqrZVF+EL91GM9H+x1KBirpI4Ah"
+
+func decryptAndPrint(data []byte) {
+	// encoder := base64.StdEncoding
+	// key, _ := encoder.DecodeString(testKey)
+
+	revel.INFO.Println("LENGTH:", len(testKey))
+
+	cipher, err := blowfish.NewCipher([]byte(testKey))
+	if err != nil {
+		revel.ERROR.Println("Could not create cipher with key!")
+		revel.ERROR.Println(err)
+		return
+	}
+
+	numChunks := int(math.Ceil(float64(len(data)) / float64(8)))
+
+	output := []byte{}
+
+	for i := 0; i < numChunks; i++ {
+		start := i * 8
+		end := (i + 1) * 8
+		srcChunk := data[start:end]
+		dstChunk := []byte{0, 0, 0, 0, 0, 0, 0, 0}
+
+		cipher.Decrypt(dstChunk, srcChunk)
+
+		output = append(output, dstChunk...)
+	}
+
+	byteData := bytes.NewBuffer(output)
+
+	reader, err := gzip.NewReader(byteData)
+	if err != nil {
+		revel.ERROR.Println(err)
+		return
+	}
+	defer reader.Close()
+
+	revel.INFO.Println(ioutil.ReadAll(reader))
+}
 
 type TextResponse []byte
 
@@ -66,6 +114,8 @@ func (c App) DataChunk(region, id, frame string) revel.Result {
 		return c.NotFound("")
 	}
 
+	decryptAndPrint(resp)
+
 	return OctetResponse(resp)
 }
 
@@ -74,6 +124,8 @@ func (c App) KeyFrame(region, id, frame string) revel.Result {
 	if !ok {
 		return c.NotFound("")
 	}
+
+	decryptAndPrint(resp)
 
 	return OctetResponse(resp)
 }
