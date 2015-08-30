@@ -19,12 +19,13 @@ var playersTrackedOCE []string = []string{
 	"3330376",
 }
 
-// 1lann, Slowgunmaker, KingCreeper457, calvin1023
+// 1lann, Slowgunmaker, KingCreeper457, calvin1023, Slotech
 var playersTrackedNA []string = []string{
 	"24431578",
 	"65399212",
 	"43769335",
 	"59945261",
+	"65409292",
 }
 
 var recordedGames []string

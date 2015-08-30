@@ -166,7 +166,7 @@ func recordFrames(region, gameId string) {
 
 		if chunk.CurrentKeyFrame > lastKeyFrame {
 			for i := lastKeyFrame + 1; i <= chunk.CurrentKeyFrame; i++ {
-				getKeyFrame(region, gameId, strconv.Itoa(chunk.CurrentKeyFrame))
+				getKeyFrame(region, gameId, strconv.Itoa(i))
 			}
 		}
 
