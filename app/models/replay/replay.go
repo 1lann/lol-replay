@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"github.com/revel/revel"
 	"io/ioutil"
+	"regexp"
 	"strconv"
 )
 
 var activeGame map[string]string
 var activeGameKey string
 var activeFirstChunk int
+
+var pattern = regexp.MustCompile("\"endGameChunkId\":\\d+")
 
 func readNumberChunk(key string) int {
 	data, exists := activeGame[key]
@@ -91,11 +94,19 @@ func GetMetadata(region, gameId string) ([]byte, bool) {
 }
 
 func GetLastChunkInfo(region, gameId, last string) ([]byte, bool) {
+	var resp []byte
+	var ok bool
 	if last == "0" {
-		return readData(region, gameId, "lastChunkData")
+		resp, ok = readData(region, gameId, "lastChunkData")
 	} else {
-		return readData(region, gameId, "firstChunkData")
+		resp, ok = readData(region, gameId, "firstChunkData")
 	}
+
+	if !ok {
+		return []byte{}, ok
+	}
+
+	return pattern.ReplaceAll(resp, []byte("\"endGameChunkId\":0")), true
 }
 
 func GetGameDataChunk(region, gameId, frame string) ([]byte, bool) {

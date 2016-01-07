@@ -6,7 +6,6 @@ import (
 	"replay/app/models/history"
 	"replay/app/models/record"
 	"replay/app/models/replay"
-	"time"
 )
 
 type TextResponse []byte
@@ -51,7 +50,6 @@ func (c App) Metadata(region, id string) revel.Result {
 }
 
 func (c App) LastChunkInfo(region, id, end string) revel.Result {
-	time.Sleep(time.Second)
 	resp, ok := replay.GetLastChunkInfo(region, id, end)
 	if !ok {
 		return c.NotFound("")
