@@ -64,7 +64,7 @@ func writeLastChunkInfo(region, gameId string,
 
 	writeRecording(region, gameId, "firstChunkData", result)
 
-	writeChunk.NextChunk = chunk.CurrentChunk
+	writeChunk.NextChunk = chunk.CurrentChunk - 1
 	writeChunk.CurrentChunk = chunk.CurrentChunk
 	writeChunk.CurrentKeyFrame = chunk.CurrentKeyFrame
 

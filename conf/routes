@@ -20,6 +20,5 @@ GET		/observer-mode/rest/consumer/getLastChunkInfo/:region/:id/:end/*ignore		App
 GET		/observer-mode/rest/consumer/getGameDataChunk/:region/:id/:frame/*ignore	App.DataChunk
 GET		/observer-mode/rest/consumer/getKeyFrame/:region/:id/:frame/*ignore			App.KeyFrame
 
-
 # Catch all
 *       /*all                   													App.Catch
