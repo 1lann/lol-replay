@@ -12,11 +12,12 @@ import (
 
 var apiKey string
 
-// onelann, Slowgunmaker, xChryssalidx
+// onelann, Slowgunmaker, xChryssalidx, Arctic Reaper
 var playersTrackedOCE []string = []string{
 	"3190144",
 	"3790244",
 	"3330376",
+	"3600285",
 }
 
 // 1lann, Slowgunmaker, KingCreeper457, calvin1023, Slotech
