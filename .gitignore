@@ -1,4 +1,1 @@
-test-results/
-tmp/
-routes/
-history.json
+*.glr
