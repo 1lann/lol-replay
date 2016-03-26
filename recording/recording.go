@@ -3,38 +3,39 @@
 package recording
 
 import (
-	"bufio"
 	"encoding/binary"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
+	"github.com/1lann/countwriter"
 	"io"
 	"os"
 	"sync"
 	"syscall"
+	"time"
 )
-
-const bufferSize = 65535
 
 // FormatVersion is the version number of the recording format. As of right
 // now, recording formats are not forwards or backwards compatible.
-const FormatVersion = 2
+const FormatVersion = 3
 
 const versionPosition = -2
 const headerSizePosition = -4
 
 type segment struct {
-	Position int
+	Position int64
 	Length   int
 }
 
 type recordingHeader struct {
-	Metadata       segment
+	GameMetadata   segment
 	FirstChunkInfo ChunkInfo
 	LastChunkInfo  ChunkInfo
 	FirstChunkID   int
 	KeyFrameMap    map[int]segment
 	ChunkMap       map[int]segment
 	Info           GameInfo
+	UserMetadata   segment
 }
 
 type GameInfo struct {
@@ -42,13 +43,14 @@ type GameInfo struct {
 	Version       string
 	GameId        string
 	EncryptionKey string
+	RecordTime    time.Time
 }
 
 // Recording manages the reading and writing of recording data to an
 // io.ReadWriteSeeker such as an *os.File
 type Recording struct {
 	file     io.ReadWriteSeeker
-	position int
+	position int64
 	header   recordingHeader
 	mutex    *sync.Mutex
 }
@@ -56,22 +58,23 @@ type Recording struct {
 // ChunkInfo is used to store and decode relevant chunk information from the
 // recorded game. It is used to store the
 type ChunkInfo struct {
-	NextChunk       int `json:"nextChunkId"`
 	CurrentChunk    int `json:"chunkId"`
-	NextUpdate      int `json:"nextAvailableChunk"`
-	StartGameChunk  int `json:"startGameChunkId"`
-	CurrentKeyFrame int `json:"keyFrameId"`
-	EndGameChunk    int `json:"endGameChunkId"`
 	AvailableSince  int `json:"availableSince"`
-	Duration        int `json:"duration"`
+	NextUpdate      int `json:"nextAvailableChunk"`
+	CurrentKeyFrame int `json:"keyFrameId"`
+	NextChunk       int `json:"nextChunkId"`
 	EndStartupChunk int `json:"endStartupChunkId"`
+	StartGameChunk  int `json:"startGameChunkId"`
+	EndGameChunk    int `json:"endGameChunkId"`
+	Duration        int `json:"duration"`
 }
 
 var (
 	ErrMissingData         = errors.New("recording: missing data")
 	ErrCannotModify        = errors.New("recording: cannot modify read-only data")
 	ErrCorruptRecording    = errors.New("recording: corrupt recording")
-	ErrIncompatibleVersion = errors.New("recording: incompatible format version")
+	ErrIncompatibleVersion = errors.New("recording: incompatible or invalid format version")
+	ErrHeaderTooLarge      = errors.New("recording: header is too large")
 )
 
 // NewRecording creates a new recording for writing to, or reads an existing
@@ -136,7 +139,7 @@ func (r *Recording) readHeader() error {
 		return err
 	}
 
-	r.position = pos
+	r.position = int64(pos)
 
 	// Read the header data
 	if _, err := r.file.Seek(-(int64(size))-4, 2); err != nil {
@@ -161,20 +164,21 @@ func (r *Recording) readHeader() error {
 }
 
 func (r *Recording) writeHeader() error {
-	r.file.Seek(int64(r.position), 0)
-	writer := bufio.NewWriterSize(r.file, bufferSize)
+	if _, err := r.file.Seek(int64(r.position), 0); err != nil {
+		return err
+	}
+
+	writer := countwriter.NewWriter(r.file)
 	gob.NewEncoder(writer).Encode(r.header)
 
-	size := writer.Buffered()
-	err := writer.Flush()
-	if err != nil {
-		return err
+	if writer.Count() > 65535 {
+		return ErrHeaderTooLarge
 	}
 
 	// Write preamble headers
 	// The size of the header
 	if err := binary.Write(r.file, binary.LittleEndian,
-		uint16(size)); err != nil {
+		uint16(writer.Count())); err != nil {
 		return err
 	}
 
@@ -195,8 +199,25 @@ func (r *Recording) storeInStack(data []byte) (segment, error) {
 	writtenPosition := r.position
 
 	written, err := r.file.Write(data)
-	r.position += written
+	r.position += int64(written)
 	return segment{writtenPosition, written}, err
+}
+
+func (r *Recording) writeToStack(rd io.Reader) (segment, error) {
+	if _, err := r.file.Seek(int64(r.position), 0); err != nil {
+		return segment{}, err
+	}
+
+	writtenPosition := r.position
+
+	written, err := io.Copy(r.file, rd)
+	r.position += written
+	return segment{writtenPosition, int(written)}, err
+}
+
+func (c ChunkInfo) WriteTo(w io.Writer) {
+	encoder := json.NewEncoder(w)
+	encoder.Encode(c)
 }
 
 func init() {

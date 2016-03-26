@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	file, err := os.Open("test.glrf")
+	file, err := os.Open("test.glr")
 	if err != nil {
 		panic(err)
 	}

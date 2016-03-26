@@ -4,8 +4,8 @@
 package record
 
 import (
+	"bytes"
 	"github.com/1lann/lol-replay/recording"
-	"io"
 	"time"
 )
 
@@ -30,31 +30,28 @@ type recorder struct {
 	gameId      string
 }
 
-// Record starts a new recording that writes into the io.ReadWriteSeeker
-// (such as an *os.File) and blocks until the recording ends or an
-// error occurs. It is the caller's responsibility to close
-// the writer when the recording is complete. Note that partial data may be
-// written to the writer, even if the recording was unsuccessful. This partial
-// data can probably be played back. ErrNotFound enclosed in a *RecordingError
-// is returned if there is no game that can be recorded from the provided
-// parameters.
-func Record(platform, gameId, encryptionKey string,
-	file io.ReadWriteSeeker) error {
+// Record starts a new recording that writes into a *recording.Recording
+// and blocks until the recording ends or an error occurs. Note that partial
+// data may be written to the recording, even if the recording was
+// unsuccessful. This partial data can probably be played back. ErrNotFound
+// enclosed in a *RecordingError is returned if there is no game that can be
+// recorded from the provided parameters.
+func Record(platform, gameId, encryptionKey string, userMetadata interface{},
+	rec *recording.Recording) error {
 	url, found := platformURLs[platform]
 	if !found {
 		return newError("", ErrUnknownPlatform)
 	}
 
-	thisRecording, err := recording.NewRecording(file)
-	if err != nil {
-		return newError("", err)
-	}
-
 	thisRecorder := &recorder{
 		platformURL: url,
-		recording:   thisRecording,
+		recording:   rec,
 		platform:    platform,
 		gameId:      gameId,
+	}
+
+	if err := thisRecorder.recording.StoreUserMetadata(userMetadata); err != nil {
+		return err
 	}
 
 	version, err := GetPlatformVersion(platform)
@@ -107,12 +104,14 @@ func (r *recorder) waitForFirstChunk() error {
 		return err
 	}
 
-	if err := r.recording.StoreGameMetadata(data); err != nil {
-		return err
+	if !r.recording.HasMetadata() {
+		if err := r.recording.StoreGameMetadata(bytes.NewReader(data)); err != nil {
+			return err
+		}
 	}
 
 	// Get the startup frames
-	for i := 1; i <= metadata.StartupChunk+1; i++ {
+	for i := 1; i <= metadata.StartupChunk; i++ {
 		for {
 			chunk, err := r.retrieveLastChunkInfo()
 			if err != nil {
@@ -125,7 +124,7 @@ func (r *recorder) waitForFirstChunk() error {
 				continue
 			}
 
-			if err := r.storeChunkFrame(i); err != nil {
+			if err := r.storeChunk(i); err != nil {
 				return err
 			}
 			break
@@ -165,7 +164,7 @@ func (r *recorder) recordFrames() error {
 			lastChunk = chunk.CurrentChunk
 			lastKeyFrame = chunk.CurrentKeyFrame
 
-			if err := r.storeChunkFrame(chunk.CurrentChunk); err != nil {
+			if err := r.storeChunk(chunk.CurrentChunk); err != nil {
 				return err
 			}
 			if err := r.storeKeyFrame(chunk.CurrentKeyFrame); err != nil {
@@ -180,14 +179,14 @@ func (r *recorder) recordFrames() error {
 
 		if chunk.CurrentChunk > lastChunk {
 			for i := lastChunk + 1; i <= chunk.CurrentChunk; i++ {
-				if err := r.storeChunkFrame(i); err != nil {
+				if err := r.storeChunk(i); err != nil {
 					return err
 				}
 			}
 		}
 
 		if chunk.NextChunk < chunk.CurrentChunk && chunk.NextChunk > 0 {
-			if err := r.storeChunkFrame(chunk.NextChunk); err != nil {
+			if err := r.storeChunk(chunk.NextChunk); err != nil {
 				return err
 			}
 		}
@@ -222,12 +221,12 @@ func (r *recorder) storeChunkInfo(firstChunkID, firstKeyFrame int,
 	chunkInfo := recording.ChunkInfo{
 		NextChunk:       firstChunkID,
 		CurrentChunk:    firstChunkID,
-		NextUpdate:      3000,
+		NextUpdate:      0,
 		StartGameChunk:  chunk.StartGameChunk,
 		CurrentKeyFrame: firstKeyFrame,
 		EndGameChunk:    chunk.CurrentChunk,
 		AvailableSince:  0,
-		Duration:        3000,
+		Duration:        30000,
 		EndStartupChunk: chunk.EndStartupChunk,
 	}
 
