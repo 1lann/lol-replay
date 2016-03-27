@@ -6,7 +6,24 @@ import (
 	"time"
 )
 
+// DeclareComplete declares the recording as a complete recording.
+func (r *Recording) DeclareComplete() error {
+	if r.header.IsComplete {
+		return nil
+	}
+
+	r.header.IsComplete = true
+	return r.writeHeader()
+}
+
+// IsComplete returns whether or not the recording has been declared as
+// being complete or not.
+func (r *Recording) IsComplete() bool {
+	return r.header.IsComplete
+}
+
 // StoreUserMetadata stores arbitary data with the recording for convenience.
+// Note that the user metadata is read-only, and thus can only be stored once.
 // It can be retrieved with RetrieveUserMetadata.
 func (r *Recording) StoreUserMetadata(metadata interface{}) error {
 	r.mutex.Lock()
@@ -64,15 +81,6 @@ func (r *Recording) StoreGameMetadata(rd io.Reader) error {
 	r.header.GameMetadata = seg
 	r.header.Info.RecordTime = time.Now()
 
-	return r.writeHeader()
-}
-
-// StoreFirstChunkID stores the game's first chunk ID.
-func (r *Recording) StoreFirstChunkID(num int) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	r.header.FirstChunkID = num
 	return r.writeHeader()
 }
 

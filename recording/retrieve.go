@@ -25,10 +25,16 @@ func (r *Recording) HasKeyFrame(num int) bool {
 	return found
 }
 
-// HasChunk returns whether or not the metadata of the game has already been
-// written to the recording or not.
-func (r *Recording) HasMetadata() bool {
+// HasGameMetadata returns whether or not the metadata of the game has already
+// been written to the recording or not.
+func (r *Recording) HasGameMetadata() bool {
 	return r.header.GameMetadata.Length > 0
+}
+
+// HasUserMetadata returns whether or not the user metadata has already been
+// written to the recording or not.
+func (r *Recording) HasUserMetadata() bool {
+	return r.header.UserMetadata.Length > 0
 }
 
 // RetrieveUserMetadata retrieves the arbitary user data stored by
@@ -73,11 +79,6 @@ func (r *Recording) RetrieveGameMetadataTo(w io.Writer) (int, error) {
 
 	written, err := io.CopyN(w, r.file, int64(r.header.GameMetadata.Length))
 	return int(written), err
-}
-
-// RetrieveFirstChunkID retrieves the game's first chunk ID.
-func (r *Recording) RetrieveFirstChunkID() int {
-	return r.header.FirstChunkID
 }
 
 // RetrieveFirstChunkInfo retrieves the chunk info that should be returned

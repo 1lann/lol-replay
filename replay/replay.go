@@ -195,6 +195,7 @@ func (rh requestHandler) getKeyFrame(w http.ResponseWriter, r *http.Request, ps 
 	}
 }
 
+// Router returns a http.Handler that handles requests for recorded data.
 func Router(retriever ReplayRetriever) http.Handler {
 	handler := requestHandler{retriever}
 

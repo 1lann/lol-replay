@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"sync"
 )
 
@@ -50,17 +51,34 @@ func retrieve(region, gameId string) *recording.Recording {
 		return nil
 	}
 
+	if internalRec.temporary {
+		return nil
+	}
+
 	return internalRec.rec
 }
 
 func (s *internalServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, replay.PathHeader) {
+		s.replayRouter.ServeHTTP(w, r)
+		return
+	}
+
 	if r.URL.Path == "/" {
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("insert home page here"))
 		return
 	}
 
-	s.replayRouter.ServeHTTP(w, r)
+	// if asset, found := staticAssets[r.URL.Path]; found {
+	// 	asset.ServeHTTP(w, r)
+	// 	return
+	// }
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("404 page not found"))
 }
 
 func main() {
@@ -98,7 +116,7 @@ func loadRecordings(dir []os.FileInfo, dirName string) {
 			continue
 		}
 
-		file, err := os.Open(dirName + "/" + fileInfo.Name())
+		file, err := os.OpenFile(dirName+"/"+fileInfo.Name(), os.O_RDWR, 0666)
 		if err != nil {
 			log.Println("failed to open "+fileInfo.Name()+":", err)
 			continue
@@ -115,6 +133,7 @@ func loadRecordings(dir []os.FileInfo, dirName string) {
 			location:  dirName + "/" + fileInfo.Name(),
 			rec:       rec,
 			temporary: false,
+			recording: false,
 		}
 
 		key := rec.RetrieveGameInfo().Platform + "_" +

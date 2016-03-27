@@ -36,11 +36,16 @@ type recorder struct {
 // unsuccessful. This partial data can probably be played back. ErrNotFound
 // enclosed in a *RecordingError is returned if there is no game that can be
 // recorded from the provided parameters.
-func Record(platform, gameId, encryptionKey string, userMetadata interface{},
+func Record(platform, gameId, encryptionKey string,
 	rec *recording.Recording) error {
 	url, found := platformURLs[platform]
 	if !found {
 		return newError("", ErrUnknownPlatform)
+	}
+
+	resumption := false
+	if rec.HasGameMetadata() {
+		resumption = true
 	}
 
 	thisRecorder := &recorder{
@@ -48,10 +53,6 @@ func Record(platform, gameId, encryptionKey string, userMetadata interface{},
 		recording:   rec,
 		platform:    platform,
 		gameId:      gameId,
-	}
-
-	if err := thisRecorder.recording.StoreUserMetadata(userMetadata); err != nil {
-		return err
 	}
 
 	version, err := GetPlatformVersion(platform)
@@ -64,6 +65,7 @@ func Record(platform, gameId, encryptionKey string, userMetadata interface{},
 		Version:       version,
 		GameId:        gameId,
 		EncryptionKey: encryptionKey,
+		RecordTime:    time.Now(),
 	}); err != nil {
 		return err
 	}
@@ -72,49 +74,58 @@ func Record(platform, gameId, encryptionKey string, userMetadata interface{},
 		return err
 	}
 
-	if err := thisRecorder.recordFrames(); err != nil {
+	if err := thisRecorder.recordFrames(resumption); err != nil {
 		return err
+	}
+
+	if !resumption {
+		thisRecorder.recording.DeclareComplete()
 	}
 
 	return nil
 }
 
 func (r *recorder) waitForFirstChunk() error {
-	metadata, data, err := r.retrieveMetadata()
+	meta, data, err := r.retrieveMetadata()
 	if err != nil {
 		return err
 	}
 
-	for {
-		chunk, err := r.retrieveLastChunkInfo()
+	if !r.recording.HasGameMetadata() {
+		for {
+			chunk, err := r.retrieveLastChunkInfo()
+			if err != nil {
+				return err
+			}
+
+			if chunk.CurrentChunk > meta.StartupChunk {
+				break
+			}
+
+			time.Sleep(time.Duration(chunk.NextUpdate)*time.Millisecond +
+				time.Second)
+		}
+
+		meta, data, err = r.retrieveMetadata()
 		if err != nil {
 			return err
 		}
 
-		if chunk.CurrentChunk > metadata.StartupChunk {
-			break
-		}
-
-		time.Sleep(time.Duration(chunk.NextUpdate)*time.Millisecond +
-			time.Second)
-	}
-
-	metadata, data, err = r.retrieveMetadata()
-	if err != nil {
-		return err
-	}
-
-	if !r.recording.HasMetadata() {
 		if err := r.recording.StoreGameMetadata(bytes.NewReader(data)); err != nil {
 			return err
 		}
 	}
 
 	// Get the startup frames
-	for i := 1; i <= metadata.StartupChunk; i++ {
+	for i := 1; i <= meta.StartupChunk; i++ {
 		for {
 			chunk, err := r.retrieveLastChunkInfo()
 			if err != nil {
+				if err.(*RecordingError).Err == ErrNotFound {
+					time.Sleep(time.Second * 10)
+					continue
+				}
+
 				return err
 			}
 
@@ -134,16 +145,50 @@ func (r *recorder) waitForFirstChunk() error {
 	return nil
 }
 
-func (r *recorder) recordFrames() error {
+func (r *recorder) recordFrames(resumption bool) error {
 	firstChunkID := 0
 	firstKeyFrame := 0
-	lastChunk := 0
+	lastChunkID := 0
 	lastKeyFrame := 0
+
+	if resumption {
+		// Restore information
+		firstChunkInfo := r.recording.RetrieveFirstChunkInfo()
+		firstChunkID = firstChunkInfo.CurrentChunk
+		firstKeyFrame = firstChunkInfo.CurrentKeyFrame
+		lastChunkInfo := r.recording.RetrieveLastChunkInfo()
+		lastChunkID = lastChunkInfo.CurrentChunk
+		lastKeyFrame = lastChunkInfo.CurrentKeyFrame
+	}
 
 	for {
 		chunk, err := r.retrieveLastChunkInfo()
 		if err != nil {
 			return err
+		}
+
+		if resumption {
+			lastChunkID = chunk.CurrentChunk
+			lastKeyFrame = chunk.CurrentKeyFrame
+
+			// Download as much previous data (as fast) as possible
+			go func() {
+				for i := chunk.CurrentChunk; i >= chunk.StartGameChunk; i-- {
+					if err := r.storeChunk(i); err != nil {
+						return
+					}
+				}
+			}()
+
+			go func() {
+				for i := chunk.CurrentKeyFrame; i >= 1; i-- {
+					if err := r.storeKeyFrame(i); err != nil {
+						return
+					}
+				}
+			}()
+
+			resumption = false
 		}
 
 		if firstChunkID == 0 {
@@ -152,16 +197,12 @@ func (r *recorder) recordFrames() error {
 				firstChunkID = chunk.CurrentChunk
 			}
 
-			if err := r.recording.StoreFirstChunkID(firstChunkID); err != nil {
-				return err
-			}
-
 			firstKeyFrame = 1
 			if chunk.CurrentKeyFrame > 0 {
 				firstKeyFrame = chunk.CurrentKeyFrame
 			}
 
-			lastChunk = chunk.CurrentChunk
+			lastChunkID = chunk.CurrentChunk
 			lastKeyFrame = chunk.CurrentKeyFrame
 
 			if err := r.storeChunk(chunk.CurrentChunk); err != nil {
@@ -174,11 +215,10 @@ func (r *recorder) recordFrames() error {
 
 		if chunk.StartGameChunk > firstChunkID {
 			firstChunkID = chunk.StartGameChunk
-			r.recording.StoreFirstChunkID(firstChunkID)
 		}
 
-		if chunk.CurrentChunk > lastChunk {
-			for i := lastChunk + 1; i <= chunk.CurrentChunk; i++ {
+		if chunk.CurrentChunk > lastChunkID {
+			for i := lastChunkID + 1; i <= chunk.CurrentChunk; i++ {
 				if err := r.storeChunk(i); err != nil {
 					return err
 				}
@@ -204,7 +244,7 @@ func (r *recorder) recordFrames() error {
 			return err
 		}
 
-		lastChunk = chunk.CurrentChunk
+		lastChunkID = chunk.CurrentChunk
 		lastKeyFrame = chunk.CurrentKeyFrame
 
 		if chunk.EndGameChunk == chunk.CurrentChunk+1 {

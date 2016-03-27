@@ -2,12 +2,14 @@
 // files.
 package recording
 
+//go:generate ffjson $GOFILE
+
 import (
 	"encoding/binary"
 	"encoding/gob"
-	"encoding/json"
 	"errors"
 	"github.com/1lann/countwriter"
+	"github.com/pquerna/ffjson/ffjson"
 	"io"
 	"os"
 	"sync"
@@ -17,7 +19,7 @@ import (
 
 // FormatVersion is the version number of the recording format. As of right
 // now, recording formats are not forwards or backwards compatible.
-const FormatVersion = 3
+const FormatVersion = 6
 
 const versionPosition = -2
 const headerSizePosition = -4
@@ -31,11 +33,11 @@ type recordingHeader struct {
 	GameMetadata   segment
 	FirstChunkInfo ChunkInfo
 	LastChunkInfo  ChunkInfo
-	FirstChunkID   int
 	KeyFrameMap    map[int]segment
 	ChunkMap       map[int]segment
 	Info           GameInfo
 	UserMetadata   segment
+	IsComplete     bool
 }
 
 type GameInfo struct {
@@ -216,8 +218,8 @@ func (r *Recording) writeToStack(rd io.Reader) (segment, error) {
 }
 
 func (c ChunkInfo) WriteTo(w io.Writer) {
-	encoder := json.NewEncoder(w)
-	encoder.Encode(c)
+	encoder := ffjson.NewEncoder(w)
+	encoder.EncodeFast(&c)
 }
 
 func init() {

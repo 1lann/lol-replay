@@ -24,7 +24,7 @@ func main() {
 	fmt.Println("old:", info.EndGameChunk)
 	fmt.Println(info)
 
-	info.EndStartupChunk = info.EndStartupChunk - 1
+	info.EndStartupChunk = info.EndStartupChunk + 1
 
 	fmt.Println(info.CurrentChunk)
 

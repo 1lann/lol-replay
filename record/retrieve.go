@@ -1,9 +1,11 @@
 package record
 
+//go:generate ffjson $GOFILE
+
 import (
-	"encoding/json"
 	"errors"
 	"github.com/1lann/lol-replay/recording"
+	"github.com/pquerna/ffjson/ffjson"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -109,7 +111,7 @@ func (r *recorder) retrieveMetadata() (metadata, []byte, error) {
 	}
 
 	result := metadata{}
-	err = json.Unmarshal(resp, &result)
+	err = ffjson.UnmarshalFast(resp, &result)
 	if err != nil {
 		return metadata{}, nil, newError("metadata", err)
 	}
@@ -170,7 +172,7 @@ func (r *recorder) retrieveLastChunkInfo() (recording.ChunkInfo, error) {
 	}
 
 	var result recording.ChunkInfo
-	err = json.Unmarshal(resp, &result)
+	err = ffjson.UnmarshalFast(resp, &result)
 	if err != nil {
 		return recording.ChunkInfo{}, newError("last chunk info", err)
 	}

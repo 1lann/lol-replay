@@ -81,36 +81,61 @@ func monitorPlayers(config configuration) {
 			}
 
 			gameId := strconv.FormatInt(info.GameID, 10)
-			if _, found := recordings[info.PlatformID+"_"+gameId]; found {
-				continue
+			keyName := info.PlatformID + "_" + gameId
+			resume := false
+
+			if _, found := recordings[keyName]; found {
+				if recordings[keyName].temporary ||
+					recordings[keyName].recording ||
+					recordings[keyName].rec.IsComplete() {
+					continue
+				}
+
+				if !recordings[keyName].rec.IsComplete() {
+					resume = true
+				}
 			}
 
-			recordings[info.PlatformID+"_"+gameId] = &internalRecording{
-				temporary: true,
-				recording: false,
+			if !resume {
+				recordings[keyName] = &internalRecording{
+					temporary: true,
+					recording: false,
+				}
+			} else {
+				recordings[keyName].temporary = true
+				recordings[keyName].recording = false
 			}
 
 			// TODO: Clean up and close file handler
 
-			go recordGame(config, info)
+			go recordGame(config, info, resume)
 		}
 	}
 }
 
-func recordGame(config configuration, info gameInfo) {
+func recordGame(config configuration, info gameInfo, resume bool) {
 	gameId := strconv.FormatInt(info.GameID, 10)
 	keyName := info.PlatformID + "_" + gameId
 
-	file, err := os.Create(config.RecordingsDirectory + "/" + keyName + ".glr")
-	if err != nil {
-		log.Println("create recording error:", err)
-		return
-	}
+	var file *os.File
+	var rec *recording.Recording
+	var err error
 
-	rec, err := recording.NewRecording(file)
-	if err != nil {
-		log.Println("failed to initialize recording:", err)
-		return
+	if !resume {
+		file, err = os.Create(config.RecordingsDirectory + "/" + keyName + ".glr")
+		if err != nil {
+			log.Println("create recording error:", err)
+			return
+		}
+
+		rec, err = recording.NewRecording(file)
+		if err != nil {
+			log.Println("failed to initialize recording:", err)
+			return
+		}
+	} else {
+		rec = recordings[keyName].rec
+		file = recordings[keyName].file
 	}
 
 	recordings[keyName] = &internalRecording{
@@ -121,15 +146,30 @@ func recordGame(config configuration, info gameInfo) {
 		recording: true,
 	}
 
-	log.Println("recording " + keyName)
+	if !rec.HasUserMetadata() {
+		if err := rec.StoreUserMetadata(info); err != nil {
+			log.Println("recording failed to store game metadata:", err)
+			return
+		}
+	}
+
+	if resume {
+		log.Println("resuming recording " + keyName)
+	} else {
+		log.Println("recording " + keyName)
+	}
 
 	err = record.Record(info.PlatformID, gameId,
-		info.Observers.EncryptionKey, info, rec)
+		info.Observers.EncryptionKey, rec)
+
+	recordings[keyName].recording = false
 
 	if err != nil {
 		log.Println("error while recording "+keyName+":", err)
 		return
 	}
+
+	log.Println("recording " + keyName + " complete")
 }
 
 func (p player) currentGameInfo(apiKey string) (gameInfo, bool) {
