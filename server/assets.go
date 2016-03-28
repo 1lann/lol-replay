@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"net/http"
+	"strings"
 )
 
 type staticAsset struct {
@@ -17,21 +18,11 @@ var staticAssets = make(map[string]*staticAsset)
 func (s *staticAsset) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", s.contentType)
 	w.Header().Set("Cache-Control", "max-age=604800")
-	if encodings, found := r.Header["Accept-Encoding"]; found {
-		gzippable := false
-		for _, enc := range encodings {
-			if enc == "gzip" {
-				gzippable = true
-				break
-			}
-		}
-
-		if gzippable {
-			w.Header().Set("Content-Encoding", "gzip")
-			w.WriteHeader(http.StatusOK)
-			w.Write(s.gzipped)
-			return
-		}
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		w.WriteHeader(http.StatusOK)
+		w.Write(s.gzipped)
+		return
 	}
 
 	// Must be plain

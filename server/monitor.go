@@ -161,6 +161,7 @@ func recordGame(info gameInfoMetadata, resume bool) {
 	var file *os.File
 	var rec *recording.Recording
 	var err error
+	sortedKey := -1
 
 	if !resume {
 		file, err = os.Create(config.RecordingsDirectory + "/" + keyName + ".glr")
@@ -178,6 +179,13 @@ func recordGame(info gameInfoMetadata, resume bool) {
 		recordingsMutex.RLock()
 		rec = recordings[keyName].rec
 		file = recordings[keyName].file
+
+		for i, internalRec := range sortedRecordings {
+			if internalRec.rec == rec {
+				sortedKey = i
+				break
+			}
+		}
 		recordingsMutex.RUnlock()
 	}
 
@@ -190,7 +198,11 @@ func recordGame(info gameInfoMetadata, resume bool) {
 		recording: true,
 	}
 
-	sortedRecordings = append(sortedRecordings, recordings[keyName])
+	if resume && sortedKey >= 0 {
+		sortedRecordings[sortedKey] = recordings[keyName]
+	} else {
+		sortedRecordings = append(sortedRecordings, recordings[keyName])
+	}
 	recordingsMutex.Unlock()
 
 	if !rec.HasUserMetadata() {

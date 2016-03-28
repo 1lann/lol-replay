@@ -257,7 +257,7 @@ func (r *recorder) recordFrames(resumption bool) error {
 		lastChunkID = chunk.CurrentChunk
 		lastKeyFrame = chunk.CurrentKeyFrame
 
-		if chunk.EndGameChunk == chunk.CurrentChunk+1 {
+		if chunk.EndGameChunk == chunk.CurrentChunk {
 			return nil
 		}
 
@@ -284,7 +284,7 @@ func (r *recorder) storeChunkInfo(firstChunkID, firstKeyFrame int,
 		return err
 	}
 
-	chunkInfo.NextChunk = chunk.CurrentChunk - 1
+	chunkInfo.NextChunk = chunk.CurrentChunk
 	chunkInfo.CurrentChunk = chunk.CurrentChunk
 	chunkInfo.CurrentKeyFrame = chunk.CurrentKeyFrame
 

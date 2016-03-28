@@ -59,21 +59,11 @@ func serveView(w http.ResponseWriter, r *http.Request) {
 		currentPage = num
 	}
 
-	gzippable := false
-	if encodings, found := r.Header["Accept-Encoding"]; found {
-		for _, enc := range encodings {
-			if enc == "gzip" {
-				gzippable = true
-				break
-			}
-		}
-	}
-
 	templateRenderArg := getRenderArg(r, currentPage)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	if gzippable {
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		w.Header().Set("Content-Encoding", "gzip")
 		w.WriteHeader(http.StatusOK)
 
@@ -449,10 +439,10 @@ var pageSource = `<!DOCTYPE html>
 	<div class="container">
 		<div class="content">
 			<p>
-			Page took {{.LoadTime}} ms to render.
+			<strong>LoL Replay</strong> by <a href="https://github.com/1lann" target="_blank">1lann</a>. The <a href="https://github.com/1lann/lol-replay" target="_blank">source code</a> is licensed under the <a href="https://github.com/1lann/lol-replay/blob/master/LICENSE" target="_blank">MIT license</a>.
 			</p>
 			<p>
-			<strong>LoL Replay</strong> by <a href="https://github.com/1lann" target="_blank">1lann</a>. The <a href="https://github.com/1lann/lol-replay" target="_blank">source code</a> is licensed under the <a href="https://github.com/1lann/lol-replay/blob/master/LICENSE" target="_blank">MIT license</a>.
+			Page took {{.LoadTime}} ms to render.
 			</p>
 			<p>
 			LoL Replay isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc.
@@ -513,7 +503,13 @@ var copyCode = function(elem) {
 
 var flashButton = function(elem, success) {
 	if (success) {
-		window.getSelection().removeAllRanges()
+		try {
+			window.getSelection().removeAllRanges();
+		} catch (err) {}
+		try {
+			document.selection.empty();
+		} catch (err) {}
+
 		elem.style.color = "#4CAF50";
 		elem.innerText = "Copied!";
 

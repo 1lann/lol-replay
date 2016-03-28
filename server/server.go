@@ -138,7 +138,6 @@ func main() {
 		}
 
 		wg.Wait()
-		log.Println("stopped")
 		os.Exit(0)
 	}()
 
