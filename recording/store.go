@@ -6,6 +6,20 @@ import (
 	"time"
 )
 
+// Lock locks the recording to disallow any further reads or writes to the
+// recording. This is used to safely close the underlying file without
+// corrupting data written to it, or for other purposes to block reads
+// and writes.
+func (r *Recording) Lock() {
+	r.mutex.Lock()
+}
+
+// Unlock unlocks the recording that was previously locked to allow reads or
+// writes to the recording. Ensure that Unlock is called after Lock is called.
+func (r *Recording) Unlock() {
+	r.mutex.Unlock()
+}
+
 // DeclareComplete declares the recording as a complete recording.
 func (r *Recording) DeclareComplete() error {
 	if r.header.IsComplete {

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"time"
 )
@@ -30,7 +31,7 @@ type player struct {
 	Platform string `json:"platform"`
 }
 
-type gameInfo struct {
+type gameInfoMetadata struct {
 	BannedChampions []struct {
 		ChampionID int `json:"championId"`
 		PickTurn   int `json:"pickTurn"`
@@ -67,7 +68,7 @@ type gameInfo struct {
 	PlatformID string `json:"platformId"`
 }
 
-func monitorPlayers(config configuration) {
+func monitorPlayers() {
 	waitSeconds := float64(config.RefreshRate) / float64(len(config.Players))
 	waitPeriod := time.Millisecond * time.Duration(waitSeconds*1000.0)
 
@@ -84,10 +85,13 @@ func monitorPlayers(config configuration) {
 			keyName := info.PlatformID + "_" + gameId
 			resume := false
 
+			recordingsMutex.RLock()
+
 			if _, found := recordings[keyName]; found {
 				if recordings[keyName].temporary ||
 					recordings[keyName].recording ||
 					recordings[keyName].rec.IsComplete() {
+					recordingsMutex.RUnlock()
 					continue
 				}
 
@@ -95,6 +99,9 @@ func monitorPlayers(config configuration) {
 					resume = true
 				}
 			}
+
+			recordingsMutex.RUnlock()
+			recordingsMutex.Lock()
 
 			if !resume {
 				recordings[keyName] = &internalRecording{
@@ -106,16 +113,50 @@ func monitorPlayers(config configuration) {
 				recordings[keyName].recording = false
 			}
 
-			// TODO: Clean up and close file handler
-
-			go recordGame(config, info, resume)
+			cleanUp()
+			recordingsMutex.Unlock()
+			go recordGame(info, resume)
 		}
 	}
 }
 
-func recordGame(config configuration, info gameInfo, resume bool) {
+// recordingsMutex must be Locked before cleanUp is called.
+func cleanUp() {
+	numRecordings := len(recordings)
+	if numRecordings < config.KeepNumRecordings {
+		return
+	}
+
+	deleteRecording := sortedRecordings[0]
+	deleteRecording.temporary = true
+	deleteRecording.file.Close()
+	err := os.Remove(deleteRecording.location)
+	if err != nil {
+		log.Println("failed to delete "+
+			deleteRecording.location+":", err)
+	}
+
+	for key, rec := range recordings {
+		if rec == deleteRecording {
+			delete(recordings, key)
+			return
+		}
+	}
+}
+
+func recordGame(info gameInfoMetadata, resume bool) {
 	gameId := strconv.FormatInt(info.GameID, 10)
 	keyName := info.PlatformID + "_" + gameId
+
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("record game panic: %s: %s", e, debug.Stack())
+
+			recordingsMutex.Lock()
+			recordings[keyName].recording = false
+			recordingsMutex.Unlock()
+		}
+	}()
 
 	var file *os.File
 	var rec *recording.Recording
@@ -134,10 +175,13 @@ func recordGame(config configuration, info gameInfo, resume bool) {
 			return
 		}
 	} else {
+		recordingsMutex.RLock()
 		rec = recordings[keyName].rec
 		file = recordings[keyName].file
+		recordingsMutex.RUnlock()
 	}
 
+	recordingsMutex.Lock()
 	recordings[keyName] = &internalRecording{
 		file:      file,
 		location:  config.RecordingsDirectory + "/" + file.Name(),
@@ -146,8 +190,11 @@ func recordGame(config configuration, info gameInfo, resume bool) {
 		recording: true,
 	}
 
+	sortedRecordings = append(sortedRecordings, recordings[keyName])
+	recordingsMutex.Unlock()
+
 	if !rec.HasUserMetadata() {
-		if err := rec.StoreUserMetadata(info); err != nil {
+		if err := rec.StoreUserMetadata(&info); err != nil {
 			log.Println("recording failed to store game metadata:", err)
 			return
 		}
@@ -162,7 +209,9 @@ func recordGame(config configuration, info gameInfo, resume bool) {
 	err = record.Record(info.PlatformID, gameId,
 		info.Observers.EncryptionKey, rec)
 
+	recordingsMutex.Lock()
 	recordings[keyName].recording = false
+	recordingsMutex.Unlock()
 
 	if err != nil {
 		log.Println("error while recording "+keyName+":", err)
@@ -172,7 +221,7 @@ func recordGame(config configuration, info gameInfo, resume bool) {
 	log.Println("recording " + keyName + " complete")
 }
 
-func (p player) currentGameInfo(apiKey string) (gameInfo, bool) {
+func (p player) currentGameInfo(apiKey string) (gameInfoMetadata, bool) {
 	url := "https://" + platformToRegion[p.Platform] + ".api.pvp.net/observer-mode/rest" +
 		"/consumer/getSpectatorGameInfo/" + p.Platform + "/" + p.ID +
 		"?api_key=" + apiKey
@@ -187,7 +236,7 @@ func (p player) currentGameInfo(apiKey string) (gameInfo, bool) {
 
 		if resp.StatusCode == http.StatusNotFound {
 			resp.Body.Close()
-			return gameInfo{}, false
+			return gameInfoMetadata{}, false
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -198,15 +247,15 @@ func (p player) currentGameInfo(apiKey string) (gameInfo, bool) {
 		}
 
 		dec := json.NewDecoder(resp.Body)
-		var info gameInfo
+		var info gameInfoMetadata
 		err = dec.Decode(&info)
 		resp.Body.Close()
 		if err != nil {
-			return gameInfo{}, false
+			return gameInfoMetadata{}, false
 		}
 
 		return info, true
 	}
 
-	return gameInfo{}, false
+	return gameInfoMetadata{}, false
 }

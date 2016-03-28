@@ -14,9 +14,13 @@ type configuration struct {
 	RiotAPIKey          string   `json:"riot_api_key"`
 	RefreshRate         int      `json:"refresh_rate_seconds"`
 	KeepNumRecordings   int      `json:"keep_num_recordings"`
+	ShowPerPage         int      `json:"show_per_page"`
+	ShowReplayPortAs    int      `json:"show_replay_port_as"`
 }
 
-func readConfiguration(location string) configuration {
+var config configuration
+
+func readConfiguration(location string) {
 	file, err := os.Open(location)
 	if err != nil {
 		log.Fatal(err)
@@ -26,7 +30,6 @@ func readConfiguration(location string) configuration {
 
 	dec := json.NewDecoder(file)
 
-	var config configuration
 	err = dec.Decode(&config)
 	if err != nil {
 		log.Fatal(err)
@@ -38,6 +41,4 @@ func readConfiguration(location string) configuration {
 				" is not a valid platform.")
 		}
 	}
-
-	return config
 }

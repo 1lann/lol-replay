@@ -28,6 +28,7 @@ type recorder struct {
 	platformURL string
 	platform    string
 	gameId      string
+	gaps        bool
 }
 
 // Record starts a new recording that writes into a *recording.Recording
@@ -53,6 +54,7 @@ func Record(platform, gameId, encryptionKey string,
 		recording:   rec,
 		platform:    platform,
 		gameId:      gameId,
+		gaps:        false,
 	}
 
 	version, err := GetPlatformVersion(platform)
@@ -78,7 +80,12 @@ func Record(platform, gameId, encryptionKey string,
 		return err
 	}
 
-	if !resumption {
+	info := thisRecorder.recording.RetrieveFirstChunkInfo()
+	if info.CurrentChunk != info.StartGameChunk {
+		thisRecorder.gaps = true
+	}
+
+	if !thisRecorder.gaps {
 		thisRecorder.recording.DeclareComplete()
 	}
 
@@ -138,6 +145,7 @@ func (r *recorder) waitForFirstChunk() error {
 			if err := r.storeChunk(i); err != nil {
 				return err
 			}
+
 			break
 		}
 	}
@@ -175,6 +183,7 @@ func (r *recorder) recordFrames(resumption bool) error {
 			go func() {
 				for i := chunk.CurrentChunk; i >= chunk.StartGameChunk; i-- {
 					if err := r.storeChunk(i); err != nil {
+						r.gaps = true
 						return
 					}
 				}
@@ -183,6 +192,7 @@ func (r *recorder) recordFrames(resumption bool) error {
 			go func() {
 				for i := chunk.CurrentKeyFrame; i >= 1; i-- {
 					if err := r.storeKeyFrame(i); err != nil {
+						r.gaps = true
 						return
 					}
 				}

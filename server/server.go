@@ -8,9 +8,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
+	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 type internalRecording struct {
@@ -25,6 +29,15 @@ type internalServer struct {
 	replayRouter http.Handler
 }
 
+type byTime []*internalRecording
+
+func (d byTime) Len() int      { return len(d) }
+func (d byTime) Swap(i, j int) { d[i], d[j] = d[j], d[i] }
+func (d byTime) Less(i, j int) bool {
+	return d[i].rec.RetrieveGameInfo().RecordTime.Before(d[j].rec.RetrieveGameInfo().RecordTime)
+}
+
+var sortedRecordings []*internalRecording
 var recordings = make(map[string]*internalRecording)
 var recordingsMutex = new(sync.RWMutex)
 
@@ -59,26 +72,29 @@ func retrieve(region, gameId string) *recording.Recording {
 }
 
 func (s *internalServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if e := recover(); e != nil {
+			log.Printf("serve HTTP panic: %s: %s", e, debug.Stack())
+
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Sorry, an error occured while " +
+				"processing your request!"))
+		}
+	}()
+
 	if strings.HasPrefix(r.URL.Path, replay.PathHeader) {
 		s.replayRouter.ServeHTTP(w, r)
 		return
 	}
 
-	if r.URL.Path == "/" {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("insert home page here"))
+	if asset, found := staticAssets[r.URL.Path]; found {
+		asset.ServeHTTP(w, r)
 		return
 	}
 
-	// if asset, found := staticAssets[r.URL.Path]; found {
-	// 	asset.ServeHTTP(w, r)
-	// 	return
-	// }
-
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("404 page not found"))
+	serveView(w, r)
+	return
 }
 
 func main() {
@@ -87,7 +103,7 @@ func main() {
 		configLocation = os.Args[1]
 	}
 
-	config := readConfiguration(configLocation)
+	readConfiguration(configLocation)
 
 	dir, err := ioutil.ReadDir(config.RecordingsDirectory)
 	if os.IsNotExist(err) {
@@ -101,7 +117,33 @@ func main() {
 
 	internal := &internalServer{replay.Router(retrieve)}
 
-	go monitorPlayers(config)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, syscall.SIGTERM)
+	go func() {
+		<-c
+
+		log.Println("stopping gracefully...")
+		recordingsMutex.Lock()
+
+		// Lock recordings to safely close them
+		wg := new(sync.WaitGroup)
+		for _, internalRec := range recordings {
+			wg.Add(1)
+			go func(internalRec *internalRecording) {
+				internalRec.rec.Lock()
+				internalRec.file.Close()
+				wg.Done()
+			}(internalRec)
+		}
+
+		wg.Wait()
+		log.Println("stopped")
+		os.Exit(0)
+	}()
+
+	go maintainStaticData()
+	go monitorPlayers()
 
 	log.Fatal(http.ListenAndServe(config.BindAddress, internal))
 }
@@ -125,6 +167,16 @@ func loadRecordings(dir []os.FileInfo, dirName string) {
 		rec, err := recording.NewRecording(file)
 		if err != nil {
 			log.Println("failed to read recording "+fileInfo.Name()+":", err)
+			file.Close()
+			continue
+		}
+
+		if !rec.HasGameMetadata() {
+			file.Close()
+			log.Println("deleting empty recording: " + fileInfo.Name())
+			if err := os.Remove(dirName + "/" + fileInfo.Name()); err != nil {
+				log.Println("failed to delete empty recording:", err)
+			}
 			continue
 		}
 
@@ -140,5 +192,8 @@ func loadRecordings(dir []os.FileInfo, dirName string) {
 			rec.RetrieveGameInfo().GameId
 
 		recordings[key] = internalRec
+		sortedRecordings = append(sortedRecordings, internalRec)
 	}
+
+	sort.Sort(byTime(sortedRecordings))
 }
