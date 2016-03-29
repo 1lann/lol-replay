@@ -5,6 +5,7 @@ package recording
 //go:generate ffjson $GOFILE
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/gob"
 	"errors"
@@ -23,6 +24,7 @@ const FormatVersion = 6
 
 const versionPosition = -2
 const headerSizePosition = -4
+const bufferSize = 200000
 
 type segment struct {
 	Position int64
@@ -78,6 +80,8 @@ var (
 	ErrIncompatibleVersion = errors.New("recording: incompatible or invalid format version")
 	ErrHeaderTooLarge      = errors.New("recording: header is too large")
 )
+
+var bufferPool *sync.Pool
 
 // NewRecording creates a new recording for writing to, or reads an existing
 // recording to read from using the io.ReadWriteSeeker, such as an *os.File.
@@ -223,5 +227,10 @@ func (c ChunkInfo) WriteTo(w io.Writer) {
 }
 
 func init() {
+	bufferPool = new(sync.Pool)
+	bufferPool.New = func() interface{} {
+		return bytes.NewBuffer(make([]byte, 0, bufferSize))
+	}
+
 	gob.Register(recordingHeader{})
 }

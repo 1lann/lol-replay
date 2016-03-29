@@ -10,10 +10,5 @@ The packages are:
 - **replay**: Serves recordings over HTTP to be played back using the League of Legends client.
 - **server**: Contains the runnable HTTP server which has a web interface, automates recordings, and plays back recordings.
 
-## TODO
-Use a buffer to make concurrent access faster.
-Considerations:
-Have a function that retrieves a certain subsection as a reader? Another one reads into a buffer then writes?
-
 ## License
 lol-replay is licensed under the MIT license which can be found [here](/LICENSE).

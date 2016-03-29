@@ -1,6 +1,7 @@
 package recording
 
 import (
+	"bytes"
 	"encoding/gob"
 	"io"
 	"time"
@@ -40,6 +41,17 @@ func (r *Recording) IsComplete() bool {
 // Note that the user metadata is read-only, and thus can only be stored once.
 // It can be retrieved with RetrieveUserMetadata.
 func (r *Recording) StoreUserMetadata(metadata interface{}) error {
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+
+	gob.RegisterName("UserMetadata", metadata)
+	if err := gob.NewEncoder(buf).Encode(metadata); err != nil {
+		return err
+	}
+
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -47,18 +59,7 @@ func (r *Recording) StoreUserMetadata(metadata interface{}) error {
 		return ErrCannotModify
 	}
 
-	gob.RegisterName("UserMetadata", metadata)
-
-	rd, w := io.Pipe()
-
-	go func() {
-		if err := gob.NewEncoder(w).Encode(metadata); err != nil {
-			w.CloseWithError(err)
-		}
-		w.Close()
-	}()
-
-	seg, err := r.writeToStack(rd)
+	seg, err := r.writeToStack(buf)
 	if err != nil {
 		return err
 	}
@@ -79,15 +80,24 @@ func (r *Recording) StoreGameInfo(info GameInfo) error {
 
 // StoreGameMetadata stores the game metadata to the file.
 func (r *Recording) StoreGameMetadata(rd io.Reader) error {
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+
+	if _, err := buf.ReadFrom(rd); err != nil {
+		return err
+	}
+
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
 	if r.header.GameMetadata.Length > 0 {
-		// Existing metadata
 		return ErrCannotModify
 	}
 
-	seg, err := r.writeToStack(rd)
+	seg, err := r.writeToStack(buf)
 	if err != nil {
 		return err
 	}
@@ -121,6 +131,16 @@ func (r *Recording) StoreLastChunkInfo(chunkInfo ChunkInfo) error {
 // StoreChunk stores the chunk data for a chunk ID. If the chunk ID already
 // exists in the recording, ErrCannotModify will be returned.
 func (r *Recording) StoreChunk(num int, rd io.Reader) error {
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+
+	if _, err := buf.ReadFrom(rd); err != nil {
+		return err
+	}
+
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -128,7 +148,7 @@ func (r *Recording) StoreChunk(num int, rd io.Reader) error {
 		return ErrCannotModify
 	}
 
-	seg, err := r.writeToStack(rd)
+	seg, err := r.writeToStack(buf)
 	if err != nil {
 		return err
 	}
@@ -140,6 +160,16 @@ func (r *Recording) StoreChunk(num int, rd io.Reader) error {
 // StoreKeyFrame stores the keyframe data for a keyframe number. If the key
 // frame already exists in the recording, ErrCannotModify will be returned.
 func (r *Recording) StoreKeyFrame(num int, rd io.Reader) error {
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+
+	if _, err := buf.ReadFrom(rd); err != nil {
+		return err
+	}
+
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -147,7 +177,7 @@ func (r *Recording) StoreKeyFrame(num int, rd io.Reader) error {
 		return ErrCannotModify
 	}
 
-	seg, err := r.writeToStack(rd)
+	seg, err := r.writeToStack(buf)
 	if err != nil {
 		return err
 	}

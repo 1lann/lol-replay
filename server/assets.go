@@ -77,6 +77,9 @@ func init() {
 	resize: none;
 	padding: 0px;
 	outline: 0px;
+	-ms-overflow-style: none;
+	overflow: hidden;
+	height: auto;
 }
 
 @keyframes flash {

@@ -1,6 +1,7 @@
 package recording
 
 import (
+	"bytes"
 	"encoding/gob"
 	"io"
 )
@@ -28,12 +29,18 @@ func (r *Recording) HasKeyFrame(num int) bool {
 // HasGameMetadata returns whether or not the metadata of the game has already
 // been written to the recording or not.
 func (r *Recording) HasGameMetadata() bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	return r.header.GameMetadata.Length > 0
 }
 
 // HasUserMetadata returns whether or not the user metadata has already been
 // written to the recording or not.
 func (r *Recording) HasUserMetadata() bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	return r.header.UserMetadata.Length > 0
 }
 
@@ -67,29 +74,49 @@ func (r *Recording) RetrieveGameInfo() GameInfo {
 // returned.
 func (r *Recording) RetrieveGameMetadataTo(w io.Writer) (int, error) {
 	r.mutex.Lock()
-	defer r.mutex.Unlock()
 
 	if r.header.GameMetadata.Length <= 0 {
+		r.mutex.Unlock()
 		return 0, ErrMissingData
 	}
 
 	if _, err := r.file.Seek(int64(r.header.GameMetadata.Position), 0); err != nil {
+		r.mutex.Unlock()
 		return 0, err
 	}
 
-	written, err := io.CopyN(w, r.file, int64(r.header.GameMetadata.Length))
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+
+	if _, err := io.CopyN(buf, r.file, int64(r.header.GameMetadata.Length)); err != nil {
+		r.mutex.Unlock()
+		return 0, err
+	}
+	r.mutex.Unlock()
+
+	written, err := buf.WriteTo(w)
 	return int(written), err
+
 }
 
 // RetrieveFirstChunkInfo retrieves the chunk info that should be returned
 // first to the client.
 func (r *Recording) RetrieveFirstChunkInfo() ChunkInfo {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	return r.header.FirstChunkInfo
 }
 
 // StoreLastChunkInfo retrieves the chunk info that should be returned
 // after FirstChunkInfo.
 func (r *Recording) RetrieveLastChunkInfo() ChunkInfo {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	return r.header.LastChunkInfo
 }
 
@@ -98,18 +125,31 @@ func (r *Recording) RetrieveLastChunkInfo() ChunkInfo {
 // If the chunk ID does not exist, ErrMissingData will be returned.
 func (r *Recording) RetrieveChunkTo(num int, w io.Writer) (int, error) {
 	r.mutex.Lock()
-	defer r.mutex.Unlock()
 
 	seg, found := r.header.ChunkMap[num]
 	if !found {
+		r.mutex.Unlock()
 		return 0, ErrMissingData
 	}
 
 	if _, err := r.file.Seek(int64(seg.Position), 0); err != nil {
+		r.mutex.Unlock()
 		return 0, err
 	}
 
-	written, err := io.CopyN(w, r.file, int64(seg.Length))
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+
+	if _, err := io.CopyN(buf, r.file, int64(seg.Length)); err != nil {
+		r.mutex.Unlock()
+		return 0, err
+	}
+	r.mutex.Unlock()
+
+	written, err := buf.WriteTo(w)
 	return int(written), err
 }
 
@@ -118,17 +158,30 @@ func (r *Recording) RetrieveChunkTo(num int, w io.Writer) (int, error) {
 // If the chunk ID does not exist, ErrMissingData will be returned.
 func (r *Recording) RetrieveKeyFrameTo(num int, w io.Writer) (int, error) {
 	r.mutex.Lock()
-	defer r.mutex.Unlock()
 
 	seg, found := r.header.KeyFrameMap[num]
 	if !found {
+		r.mutex.Unlock()
 		return 0, ErrMissingData
 	}
 
 	if _, err := r.file.Seek(int64(seg.Position), 0); err != nil {
+		r.mutex.Unlock()
 		return 0, err
 	}
 
-	written, err := io.CopyN(w, r.file, int64(seg.Length))
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+
+	if _, err := io.CopyN(buf, r.file, int64(seg.Length)); err != nil {
+		r.mutex.Unlock()
+		return 0, err
+	}
+	r.mutex.Unlock()
+
+	written, err := buf.WriteTo(w)
 	return int(written), err
 }

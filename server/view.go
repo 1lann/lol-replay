@@ -357,7 +357,7 @@ var pageSource = `<!DOCTYPE html>
 					{{- if not .IsComplete}}
 					<header class="card-header corrupt">
 						<p class="card-header-title">
-						Possibly incomplete recording
+						Incomplete recording
 						</p>
 					</header>
 					{{- end}}
@@ -412,14 +412,14 @@ var pageSource = `<!DOCTYPE html>
 		<div style="clear:both;"></div>
 		<nav class="pagination">
 			{{- if eq .CurrentPage 1}}
-			<a disabled>Previous page</a>
+			<a disabled>Previous</a>
 			{{- else}}
-			<a href="/{{.PreviousPage}}">Previous page</a>
+			<a href="/{{.PreviousPage}}">Previous</a>
 			{{- end}}
 			{{- if eq .CurrentPage (len .Pages)}}
-			<a disabled>Next page</a>
+			<a disabled>Next</a>
 			{{- else}}
-			<a href="/{{.NextPage}}">Next page</a>
+			<a href="/{{.NextPage}}">Next</a>
 			{{- end}}
 			<ul>
 				{{- range $element := .Pages}}
