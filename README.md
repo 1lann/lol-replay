@@ -10,5 +10,11 @@ The packages are:
 - **replay**: Serves recordings over HTTP to be played back using the League of Legends client.
 - **server**: Contains the runnable HTTP server which has a web interface, automates recordings, and plays back recordings.
 
+## Screenshots
+
+![Top of LoL Replay's web interface](http://i.imgur.com/cizHmcs.png)
+
+![Bottom of LoL Replay's web interface](http://i.imgur.com/xa6tQWw.png)
+
 ## License
 lol-replay is licensed under the MIT license which can be found [here](/LICENSE).
