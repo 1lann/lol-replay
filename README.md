@@ -12,7 +12,7 @@ The packages are:
 If you would like package documentation, check the [GoDoc](https://godoc.org/github.com/1lann/lol-replay).
 
 ## Server Setup
-LoL-Replay currently assumes your client is running OS X and has [LoL Spectator](https://github.com/1lann/LoL-Spectator) installed to copy and paste replay links into. This should hopefully change to support Windows and OS X without additional programs soon.
+LoL Replay currently assumes your client is running OS X and has [LoL Spectator](https://github.com/1lann/LoL-Spectator) installed to copy and paste replay links into. This should hopefully change to support Windows and OS X without additional programs soon.
 
 1. `go get -u github.com/1lann/lol-replay/server`
 2. A binary called `server` will be installed to your `$GOPATH/bin`
