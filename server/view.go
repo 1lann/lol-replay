@@ -415,7 +415,11 @@ var pageSource = `<!DOCTYPE html>
 			{{- if eq .CurrentPage 1}}
 			<a disabled>Previous</a>
 			{{- else}}
+			{{- if eq .PreviousPage 1}}
+			<a href="/">Previous</a>
+			{{- else}}
 			<a href="/{{.PreviousPage}}">Previous</a>
+			{{- end}}
 			{{- end}}
 			{{- if eq .CurrentPage (len .Pages)}}
 			<a disabled>Next</a>
@@ -428,7 +432,11 @@ var pageSource = `<!DOCTYPE html>
 						{{- if eq . $.CurrentPage}}
 						<a class="is-active">{{.}}</a>
 						{{- else}}
+						{{- if eq . 1}}
+						<a href="/">{{.}}</a>
+						{{- else}}
 						<a href="/{{.}}">{{.}}</a>
+						{{- end}}
 						{{- end}}
 					</li>
 				{{- end}}
