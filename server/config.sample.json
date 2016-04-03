@@ -1,0 +1,23 @@
+{
+        "players": [
+                {
+                        "id": "24431578",
+                        "platform": "NA1"
+                },
+                {
+                        "id": "3190144",
+                        "platform": "OC1"
+                },
+                {
+                        "id": "48886835",
+                        "platform": "EUW1"
+                }
+        ],
+        "recordings_directory": "recordings",
+        "bind_address": "127.0.0.1:9101",
+        "riot_api_key": "your Riot API key here",
+        "refresh_rate_seconds": 150,
+        "keep_num_recordings": 100,
+        "show_per_page": 20,
+        "show_replay_port_as": 80
+}

@@ -1,7 +1,5 @@
 # LoL Replay
 
-**Notice: This project is still a work-in-progress and its specifications may change at any time. It may also be unreliable and may not work perfectly yet.**
-
 LoL Replay is a collection of Go packages to record and play back League of Legends games from the spectator endpoint. It is designed to be fast, reliable, and efficient. The modular design allows anyone to write their own recording service in Go and manipulate the recording files.
 
 The packages are:
@@ -9,6 +7,19 @@ The packages are:
 - **recording**: Encodes and decodes recordings to a file (or any io.ReadWriteSeeker) using a custom binary format which is able to serve data quickly with a small memory footprint.
 - **replay**: Serves recordings over HTTP to be played back using the League of Legends client.
 - **server**: Contains the runnable HTTP server which has a web interface, automates recordings, and plays back recordings.
+
+## Documentation
+If you would like package documentation, check the [GoDoc](https://godoc.org/github.com/1lann/lol-replay).
+
+## Server Setup
+1. `go get -u github.com/1lann/lol-replay/server`
+2. A binary called `server` will be installed to your `$GOPATH/bin`
+3. Download the [sample configuration](/server/config.sample.json).
+4. Configure to your liking. Note that platform IDs are taken from [here](https://developer.riotgames.com/docs/spectating-games).
+5. Server binary usage: `./server [configuration file location]`. If no configuration file location is specified, it will default to `config.json`.
+6. The web host will be running at the bind address specified in the configuration file. Try playing a game, and navigating your browser to it.
+
+If you need help, have an issue or want to ask a question, feel free to contact me by [email](mailto:me@chuie.io) or by making an issue on [GitHub](https://github.com/1lann/LoL-Replay/issues).
 
 ## Screenshots
 
