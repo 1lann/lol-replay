@@ -122,24 +122,23 @@ func monitorPlayers() {
 
 // recordingsMutex must be Locked before cleanUp is called.
 func cleanUp() {
-	numRecordings := len(recordings)
-	if numRecordings < config.KeepNumRecordings {
-		return
-	}
+	for len(recordings) >= config.KeepNumRecordings {
+		deleteRecording := sortedRecordings[0]
+		deleteRecording.temporary = true
+		deleteRecording.file.Close()
+		err := os.Remove(deleteRecording.location)
+		if err != nil {
+			log.Println("failed to delete "+
+				deleteRecording.location+":", err)
+		}
 
-	deleteRecording := sortedRecordings[0]
-	deleteRecording.temporary = true
-	deleteRecording.file.Close()
-	err := os.Remove(deleteRecording.location)
-	if err != nil {
-		log.Println("failed to delete "+
-			deleteRecording.location+":", err)
-	}
+		sortedRecordings = sortedRecordings[1:]
 
-	for key, rec := range recordings {
-		if rec == deleteRecording {
-			delete(recordings, key)
-			return
+		for key, rec := range recordings {
+			if rec == deleteRecording {
+				delete(recordings, key)
+				return
+			}
 		}
 	}
 }
