@@ -59,6 +59,17 @@ func serveView(w http.ResponseWriter, r *http.Request) {
 		currentPage = num
 	}
 
+	recordingsMutex.RLock()
+	numRecordings := len(sortedRecordings)
+	recordingsMutex.RUnlock()
+
+	if (currentPage > int(math.Ceil(float64(numRecordings)/
+		float64(config.ShowPerPage))) && currentPage != 1) ||
+		currentPage < 1 {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
 	templateRenderArg := getRenderArg(r, currentPage)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
