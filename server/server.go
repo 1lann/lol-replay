@@ -142,6 +142,7 @@ func main() {
 	}()
 
 	go maintainStaticData()
+	cleanUp()
 	go monitorPlayers()
 
 	log.Fatal(http.ListenAndServe(config.BindAddress, internal))

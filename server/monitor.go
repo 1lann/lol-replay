@@ -130,6 +130,8 @@ func cleanUp() {
 		if err != nil {
 			log.Println("failed to delete "+
 				deleteRecording.location+":", err)
+		} else {
+			log.Println("deleted: " + deleteRecording.location)
 		}
 
 		sortedRecordings = sortedRecordings[1:]
