@@ -124,6 +124,7 @@ func monitorPlayers() {
 func cleanUp() {
 	for len(recordings) >= config.KeepNumRecordings {
 		deleteRecording := sortedRecordings[0]
+		deleteRecording.rec.Lock()
 		deleteRecording.temporary = true
 		deleteRecording.file.Close()
 		err := os.Remove(deleteRecording.location)
