@@ -139,7 +139,7 @@ func cleanUp() {
 		for key, rec := range recordings {
 			if rec == deleteRecording {
 				delete(recordings, key)
-				return
+				break
 			}
 		}
 	}
