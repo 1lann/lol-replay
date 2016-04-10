@@ -135,6 +135,8 @@ func cleanUp() {
 			log.Println("deleted: " + deleteRecording.location)
 		}
 
+		deleteRecording.rec.Unlock()
+
 		sortedRecordings = sortedRecordings[1:]
 
 		for key, rec := range recordings {
