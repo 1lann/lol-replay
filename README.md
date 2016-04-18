@@ -1,4 +1,6 @@
 # LoL Replay
+[![Go Report Card](https://goreportcard.com/badge/github.com/1lann/lol-replay)](https://goreportcard.com/report/github.com/1lann/lol-replay)
+[![GoDoc](https://godoc.org/github.com/1lann/lol-replay?status.svg)](https://godoc.org/github.com/1lann/lol-replay)
 
 LoL Replay is a collection of Go packages to record and play back League of Legends games from the spectator endpoint. It is designed to be fast, reliable, and efficient. The modular design allows anyone to write their own recording service in Go and manipulate the recording files.
 
