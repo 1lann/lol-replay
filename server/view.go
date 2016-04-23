@@ -342,7 +342,7 @@ var pageSource = `<!DOCTYPE html>
 </head>
 <body>
 <section class="hero">
-	<div class="hero-content">
+	<div class="hero-content has-text-centered">
 		<div class="container">
 			<h1 class="title">
 				LoL Replay
