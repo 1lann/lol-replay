@@ -16,7 +16,7 @@
         "recordings_directory": "recordings",
         "bind_address": "127.0.0.1:9101",
         "riot_api_key": "your Riot API key here",
-        "refresh_rate_seconds": 150,
+        "refresh_rate_seconds": 90,
         "keep_num_recordings": 100,
         "show_per_page": 20,
         "show_replay_port_as": 80
