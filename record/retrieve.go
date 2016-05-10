@@ -4,19 +4,23 @@ package record
 
 import (
 	"errors"
-	"github.com/1lann/lol-replay/recording"
-	"github.com/pquerna/ffjson/ffjson"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/1lann/lol-replay/recording"
+	"github.com/pquerna/ffjson/ffjson"
 )
 
 const retryWaitDuration = time.Second * 5
 
-var ErrNotFound = errors.New("not found")
-var ErrUnknownPlatform = errors.New("unknown platform")
+// Error variables to check what errors have occured.
+var (
+	ErrNotFound        = errors.New("not found")
+	ErrUnknownPlatform = errors.New("unknown platform")
+)
 
 func requestOnceURL(url string) (io.ReadCloser, error) {
 	resp, err := http.Get(url)
@@ -105,7 +109,7 @@ func GetPlatformVersion(platform string) (string, error) {
 func (r *recorder) retrieveMetadata() (metadata, []byte, error) {
 	resp, err := requestURLBytes(r.platformURL +
 		"/observer-mode/rest/consumer/getGameMetaData/" + r.platform +
-		"/" + r.gameId + "/0/token")
+		"/" + r.gameID + "/0/token")
 	if err != nil {
 		return metadata{}, nil, newError("metadata", err)
 	}
@@ -130,7 +134,7 @@ func (r *recorder) storeChunk(frame int) error {
 
 	resp, err := requestURL(r.platformURL +
 		"/observer-mode/rest/consumer/getGameDataChunk/" + r.platform + "/" +
-		r.gameId + "/" + strconv.Itoa(frame) + "/token")
+		r.gameID + "/" + strconv.Itoa(frame) + "/token")
 	if err != nil {
 		return newError("chunk", err)
 	}
@@ -152,7 +156,7 @@ func (r *recorder) storeKeyFrame(frame int) error {
 
 	resp, err := requestURL(r.platformURL +
 		"/observer-mode/rest/consumer/getKeyFrame/" + r.platform + "/" +
-		r.gameId + "/" + strconv.Itoa(frame) + "/token")
+		r.gameID + "/" + strconv.Itoa(frame) + "/token")
 	if err != nil {
 		return newError("key frame", err)
 	}
@@ -166,7 +170,7 @@ func (r *recorder) storeKeyFrame(frame int) error {
 func (r *recorder) retrieveLastChunkInfo() (recording.ChunkInfo, error) {
 	resp, err := requestURLBytes(r.platformURL +
 		"/observer-mode/rest/consumer/getLastChunkInfo/" + r.platform + "/" +
-		r.gameId + "/0/token")
+		r.gameID + "/0/token")
 	if err != nil {
 		return recording.ChunkInfo{}, newError("last chunk info", err)
 	}

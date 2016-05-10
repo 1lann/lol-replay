@@ -1,9 +1,6 @@
 package main
 
 import (
-	"github.com/1lann/lol-replay/record"
-	"github.com/1lann/lol-replay/recording"
-	"github.com/1lann/lol-replay/replay"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,6 +12,10 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/1lann/lol-replay/record"
+	"github.com/1lann/lol-replay/recording"
+	"github.com/1lann/lol-replay/replay"
 )
 
 type internalRecording struct {

@@ -9,13 +9,14 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"errors"
-	"github.com/1lann/countwriter"
-	"github.com/pquerna/ffjson/ffjson"
 	"io"
 	"os"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/1lann/countwriter"
+	"github.com/pquerna/ffjson/ffjson"
 )
 
 // FormatVersion is the version number of the recording format. As of right
@@ -42,10 +43,12 @@ type recordingHeader struct {
 	IsComplete     bool
 }
 
+// GameInfo represents meta information for a game required to play it back
+// at a stored recording level.
 type GameInfo struct {
 	Platform      string
 	Version       string
-	GameId        string
+	GameID        string
 	EncryptionKey string
 	RecordTime    time.Time
 }
@@ -73,6 +76,7 @@ type ChunkInfo struct {
 	Duration        int `json:"duration"`
 }
 
+// Error variables to check what errors have occured.
 var (
 	ErrMissingData         = errors.New("recording: missing data")
 	ErrCannotModify        = errors.New("recording: cannot modify read-only data")
@@ -148,7 +152,7 @@ func (r *Recording) readHeader() error {
 	r.position = int64(pos)
 
 	// Read the header data
-	if _, err := r.file.Seek(-(int64(size))-4, 2); err != nil {
+	if _, err = r.file.Seek(-(int64(size))-4, 2); err != nil {
 		if pathErr, ok := err.(*os.PathError); ok {
 			if pathErr.Err == syscall.EINVAL {
 				// Header size is too long, recording is corrupt
@@ -221,9 +225,12 @@ func (r *Recording) writeToStack(rd io.Reader) (segment, error) {
 	return segment{writtenPosition, int(written)}, err
 }
 
-func (c ChunkInfo) WriteTo(w io.Writer) {
-	encoder := ffjson.NewEncoder(w)
-	encoder.EncodeFast(&c)
+// WriteTo encodes the ChunkInfo as JSON and writes it to a writer.
+func (c ChunkInfo) WriteTo(w io.Writer) (int64, error) {
+	cw := countwriter.NewWriter(w)
+	encoder := ffjson.NewEncoder(cw)
+	err := encoder.EncodeFast(&c)
+	return int64(cw.Count()), err
 }
 
 func init() {

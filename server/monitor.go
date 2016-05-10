@@ -2,14 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/1lann/lol-replay/record"
-	"github.com/1lann/lol-replay/recording"
 	"log"
 	"net/http"
 	"os"
 	"runtime/debug"
 	"strconv"
 	"time"
+
+	"github.com/1lann/lol-replay/record"
+	"github.com/1lann/lol-replay/recording"
 )
 
 var platformToRegion = map[string]string{

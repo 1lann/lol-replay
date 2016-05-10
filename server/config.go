@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/1lann/lol-replay/record"
 	"log"
 	"os"
+
+	"github.com/1lann/lol-replay/record"
 )
 
 type configuration struct {

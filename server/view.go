@@ -2,7 +2,6 @@ package main
 
 import (
 	"compress/gzip"
-	"github.com/dustin/go-humanize"
 	"html/template"
 	"log"
 	"math"
@@ -10,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dustin/go-humanize"
 )
 
 type playerArg struct {

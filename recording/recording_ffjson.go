@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	fflib "github.com/pquerna/ffjson/fflib/v1"
 )
 
@@ -647,8 +648,8 @@ func (mj *GameInfo) MarshalJSONBuf(buf fflib.EncodingBuffer) error {
 	fflib.WriteJsonString(buf, string(mj.Platform))
 	buf.WriteString(`,"Version":`)
 	fflib.WriteJsonString(buf, string(mj.Version))
-	buf.WriteString(`,"GameId":`)
-	fflib.WriteJsonString(buf, string(mj.GameId))
+	buf.WriteString(`,"GameID":`)
+	fflib.WriteJsonString(buf, string(mj.GameID))
 	buf.WriteString(`,"EncryptionKey":`)
 	fflib.WriteJsonString(buf, string(mj.EncryptionKey))
 	buf.WriteString(`,"RecordTime":`)
@@ -674,7 +675,7 @@ const (
 
 	ffj_t_GameInfo_Version
 
-	ffj_t_GameInfo_GameId
+	ffj_t_GameInfo_GameID
 
 	ffj_t_GameInfo_EncryptionKey
 
@@ -685,7 +686,7 @@ var ffj_key_GameInfo_Platform = []byte("Platform")
 
 var ffj_key_GameInfo_Version = []byte("Version")
 
-var ffj_key_GameInfo_GameId = []byte("GameId")
+var ffj_key_GameInfo_GameID = []byte("GameID")
 
 var ffj_key_GameInfo_EncryptionKey = []byte("EncryptionKey")
 
@@ -760,8 +761,8 @@ mainparse:
 
 				case 'G':
 
-					if bytes.Equal(ffj_key_GameInfo_GameId, kn) {
-						currentKey = ffj_t_GameInfo_GameId
+					if bytes.Equal(ffj_key_GameInfo_GameID, kn) {
+						currentKey = ffj_t_GameInfo_GameID
 						state = fflib.FFParse_want_colon
 						goto mainparse
 					}
@@ -804,8 +805,8 @@ mainparse:
 					goto mainparse
 				}
 
-				if fflib.SimpleLetterEqualFold(ffj_key_GameInfo_GameId, kn) {
-					currentKey = ffj_t_GameInfo_GameId
+				if fflib.SimpleLetterEqualFold(ffj_key_GameInfo_GameID, kn) {
+					currentKey = ffj_t_GameInfo_GameID
 					state = fflib.FFParse_want_colon
 					goto mainparse
 				}
@@ -845,8 +846,8 @@ mainparse:
 				case ffj_t_GameInfo_Version:
 					goto handle_Version
 
-				case ffj_t_GameInfo_GameId:
-					goto handle_GameId
+				case ffj_t_GameInfo_GameID:
+					goto handle_GameID
 
 				case ffj_t_GameInfo_EncryptionKey:
 					goto handle_EncryptionKey
@@ -920,9 +921,9 @@ handle_Version:
 	state = fflib.FFParse_after_value
 	goto mainparse
 
-handle_GameId:
+handle_GameID:
 
-	/* handler: uj.GameId type=string kind=string quoted=false*/
+	/* handler: uj.GameID type=string kind=string quoted=false*/
 
 	{
 
@@ -938,7 +939,7 @@ handle_GameId:
 
 			outBuf := fs.Output.Bytes()
 
-			uj.GameId = string(string(outBuf))
+			uj.GameID = string(string(outBuf))
 
 		}
 	}

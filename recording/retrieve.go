@@ -111,7 +111,7 @@ func (r *Recording) RetrieveFirstChunkInfo() ChunkInfo {
 	return r.header.FirstChunkInfo
 }
 
-// StoreLastChunkInfo retrieves the chunk info that should be returned
+// RetrieveLastChunkInfo retrieves the chunk info that should be returned
 // after FirstChunkInfo.
 func (r *Recording) RetrieveLastChunkInfo() ChunkInfo {
 	r.mutex.Lock()
