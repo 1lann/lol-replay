@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/1lann/lol-replay/recording"
 	"github.com/dustin/go-humanize"
 )
 
@@ -94,6 +95,75 @@ func serveView(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getLegendsGGLink(recording bool, recRenderArg recordingArg,
+	info recording.GameInfo, game gameInfoMetadata) string {
+	if recording {
+		if len(recRenderArg.Players) > 0 {
+			return "http://www.legends.gg/current/" +
+				platformToRegion[info.Platform] + "/" +
+				recRenderArg.Players[0].Summoner
+		} else if len(game.Participants) > 0 {
+			return "http://www.legends.gg/current/" +
+				platformToRegion[info.Platform] + "/" +
+				game.Participants[0].SummonerName
+		} else {
+			return ""
+		}
+	} else {
+		if len(recRenderArg.Players) > 0 {
+			return "http://www.legends.gg/" +
+				platformToRegion[info.Platform] + "/" +
+				recRenderArg.Players[0].Summoner + "/match/" + info.GameID
+		} else if len(game.Participants) > 0 {
+			return "http://www.legends.gg/" +
+				platformToRegion[info.Platform] + "/" +
+				game.Participants[0].SummonerName + "/match/" + info.GameID
+		} else {
+			return "http://www.legends.gg/" +
+				platformToRegion[info.Platform] + "/_/match/" + info.GameID
+		}
+	}
+}
+
+func getPlayerArg(summonerID int64, summonerName string, championID int,
+	info recording.GameInfo) (playerArg, bool) {
+	var thisPlayer playerArg
+
+	// Find player in monitor list
+	match := false
+	for _, monitoredPlayer := range config.Players {
+		if monitoredPlayer.Platform != info.Platform {
+			continue
+		}
+
+		if monitoredPlayer.ID != strconv.FormatInt(summonerID, 10) {
+			continue
+		}
+
+		match = true
+		break
+	}
+
+	if !match {
+		return playerArg{}, false
+	}
+
+	thisPlayer.Summoner = summonerName
+
+	if champion, found := allChampions[championID]; found {
+		thisPlayer.ChampionName = champion.Name
+		thisPlayer.ChampionImage =
+			"https://ddragon.leagueoflegends.com/cdn/" +
+				currentVersion + "/img/champion/" + champion.Image.Full
+	} else {
+		thisPlayer.ChampionName = "an unknown champion"
+		thisPlayer.ChampionImage = ""
+		log.Println("render: missing champion:", championID)
+	}
+
+	return thisPlayer, true
+}
+
 func getRenderArg(r *http.Request, currentPage int) renderArg {
 	start := time.Now()
 
@@ -156,83 +226,26 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 		host := strings.Split(r.Host, ":")
 
 		codeBody := host[0] + ":" + strconv.Itoa(config.ShowReplayPortAs) +
-			" " + info.EncryptionKey + " " + info.GameId + " " + info.Platform
+			" " + info.EncryptionKey + " " + info.GameID + " " + info.Platform
 
-		if !recRenderArg.IsComplete {
-			recRenderArg.Code = "spectator " + codeBody
-		} else {
-			recRenderArg.Code = "replay " + codeBody
-		}
+		recRenderArg.Code = "replay " + codeBody
 
 		if staticDataAvailable {
 			// Find people in the game
 			championsMutex.RLock()
 			for _, player := range game.Participants {
-				var thisPlayer playerArg
-
-				// Find player in monitor list
-				match := false
-				for _, monitoredPlayer := range config.Players {
-					if monitoredPlayer.Platform != info.Platform {
-						continue
-					}
-
-					if monitoredPlayer.ID != strconv.FormatInt(player.SummonerID, 10) {
-						continue
-					}
-
-					match = true
-					break
-				}
-
-				if !match {
+				playerArgs, ok := getPlayerArg(player.SummonerID,
+					player.SummonerName, player.ChampionID, info)
+				if !ok {
 					continue
 				}
-
-				thisPlayer.Summoner = player.SummonerName
-
-				if champion, found := allChampions[player.ChampionID]; found {
-					thisPlayer.ChampionName = champion.Name
-					thisPlayer.ChampionImage =
-						"https://ddragon.leagueoflegends.com/cdn/" +
-							currentVersion + "/img/champion/" + champion.Image.Full
-				} else {
-					thisPlayer.ChampionName = "an unknown champion"
-					thisPlayer.ChampionImage = ""
-					log.Println("render: missing champion:", player.ChampionID)
-				}
-
-				recRenderArg.Players = append(recRenderArg.Players, thisPlayer)
+				recRenderArg.Players = append(recRenderArg.Players, playerArgs)
 			}
 			championsMutex.RUnlock()
 		}
 
-		if rec.recording {
-			if len(recRenderArg.Players) > 0 {
-				recRenderArg.LegendsGG = "http://www.legends.gg/current/" +
-					platformToRegion[info.Platform] + "/" +
-					recRenderArg.Players[0].Summoner
-			} else if len(game.Participants) > 0 {
-				recRenderArg.LegendsGG = "http://www.legends.gg/current/" +
-					platformToRegion[info.Platform] + "/" +
-					game.Participants[0].SummonerName
-			} else {
-				recRenderArg.LegendsGG = ""
-			}
-		} else {
-			if len(recRenderArg.Players) > 0 {
-				recRenderArg.LegendsGG = "http://www.legends.gg/" +
-					platformToRegion[info.Platform] + "/" +
-					recRenderArg.Players[0].Summoner + "/match/" + info.GameId
-			} else if len(game.Participants) > 0 {
-				recRenderArg.LegendsGG = "http://www.legends.gg/" +
-					platformToRegion[info.Platform] + "/" +
-					game.Participants[0].SummonerName + "/match/" + info.GameId
-			} else {
-				recRenderArg.LegendsGG = "http://www.legends.gg/" +
-					platformToRegion[info.Platform] + "/_/match/" + info.GameId
-			}
-		}
+		recRenderArg.LegendsGG = getLegendsGGLink(rec.recording,
+			recRenderArg, info, game)
 
 		renderTemplateArg.Recordings =
 			append(renderTemplateArg.Recordings, recRenderArg)
@@ -265,67 +278,44 @@ func aOrAn(word string) string {
 	}
 }
 
+var allQueues = map[int]string{
+	0:   "custom",
+	8:   "twisted treeline",
+	2:   "normal blind",
+	14:  "normal draft",
+	4:   "ranked",
+	6:   "twisted treeline ranked",
+	9:   "ranked",
+	41:  "twisted treeline ranked team",
+	42:  "ranked team",
+	61:  "normal team builder",
+	65:  "ARAM",
+	70:  "one for all",
+	72:  "snowdown showdown",
+	73:  "snowdown showdown",
+	75:  "hexakill",
+	76:  "ultra rapid fire",
+	83:  "ultra rapid fire",
+	91:  "doom bots one",
+	92:  "doom bots two",
+	93:  "doom bots five",
+	96:  "ascension",
+	98:  "hexakill",
+	100: "bilgewater ARAM",
+	300: "Legend of the Poro King",
+	310: "counter pick",
+	313: "normal blind",
+	400: "dynamic queue unranked",
+	410: "dynamic queue ranked",
+}
+
 func getQueue(id int) string {
-	switch id {
-	case 0:
-		return "custom"
-	case 8:
-		return "twisted treeline"
-	case 2:
-		return "normal blind"
-	case 14:
-		return "normal draft"
-	case 4:
-		return "ranked"
-	case 6:
-		return "twisted treeline ranked"
-	case 9:
-		return "ranked"
-	case 41:
-		return "twisted treeline ranked team"
-	case 42:
-		return "ranked team"
-	case 61:
-		return "normal team builder"
-	case 65:
-		return "ARAM"
-	case 70:
-		return "one for all"
-	case 72:
-		return "snowdown showdown"
-	case 73:
-		return "snowdown showdown"
-	case 75:
-		return "hexakill"
-	case 76:
-		return "ultra rapid fire"
-	case 83:
-		return "ultra rapid fire"
-	case 91:
-		return "doom bots one"
-	case 92:
-		return "doom bots two"
-	case 93:
-		return "doom bots five"
-	case 96:
-		return "ascension"
-	case 98:
-		return "hexakill"
-	case 100:
-		return "bilgewater ARAM"
-	case 300:
-		return "Legend of the Poro King"
-	case 310:
-		return "counter pick"
-	case 313:
-		return "normal blind"
-	case 400:
-		return "dynamic queue unranked"
-	case 410:
-		return "dynamic queue ranked"
-	default:
+	queue, found := allQueues[id]
+	if !found {
 		return "unknown queue type"
 	}
+
+	return queue
 }
 
 func init() {

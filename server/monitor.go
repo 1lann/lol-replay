@@ -82,8 +82,8 @@ func monitorPlayers() {
 				continue
 			}
 
-			gameId := strconv.FormatInt(info.GameID, 10)
-			keyName := info.PlatformID + "_" + gameId
+			gameID := strconv.FormatInt(info.GameID, 10)
+			keyName := info.PlatformID + "_" + gameID
 			resume := false
 
 			recordingsMutex.RLock()
@@ -149,9 +149,44 @@ func cleanUp() {
 	}
 }
 
+func loadRecordGameFile(resume bool,
+	keyName string) (*recording.Recording, *os.File, int, error) {
+	var sortedKey = -1
+
+	if !resume {
+		file, err := os.Create(config.RecordingsDirectory + "/" + keyName + ".glr")
+		if err != nil {
+			log.Println("create recording error:", err)
+			return nil, nil, sortedKey, err
+		}
+
+		rec, err := recording.NewRecording(file)
+		if err != nil {
+			log.Println("failed to initialize recording:", err)
+			return nil, nil, sortedKey, err
+		}
+
+		return rec, file, sortedKey, nil
+	}
+
+	recordingsMutex.RLock()
+	rec := recordings[keyName].rec
+	file := recordings[keyName].file
+
+	for i, internalRec := range sortedRecordings {
+		if internalRec.rec == rec {
+			sortedKey = i
+			break
+		}
+	}
+	recordingsMutex.RUnlock()
+
+	return rec, file, sortedKey, nil
+}
+
 func recordGame(info gameInfoMetadata, resume bool) {
-	gameId := strconv.FormatInt(info.GameID, 10)
-	keyName := info.PlatformID + "_" + gameId
+	gameID := strconv.FormatInt(info.GameID, 10)
+	keyName := info.PlatformID + "_" + gameID
 
 	defer func() {
 		if e := recover(); e != nil {
@@ -163,35 +198,9 @@ func recordGame(info gameInfoMetadata, resume bool) {
 		}
 	}()
 
-	var file *os.File
-	var rec *recording.Recording
-	var err error
-	sortedKey := -1
-
-	if !resume {
-		file, err = os.Create(config.RecordingsDirectory + "/" + keyName + ".glr")
-		if err != nil {
-			log.Println("create recording error:", err)
-			return
-		}
-
-		rec, err = recording.NewRecording(file)
-		if err != nil {
-			log.Println("failed to initialize recording:", err)
-			return
-		}
-	} else {
-		recordingsMutex.RLock()
-		rec = recordings[keyName].rec
-		file = recordings[keyName].file
-
-		for i, internalRec := range sortedRecordings {
-			if internalRec.rec == rec {
-				sortedKey = i
-				break
-			}
-		}
-		recordingsMutex.RUnlock()
+	rec, file, sortedKey, err := loadRecordGameFile(resume, keyName)
+	if err != nil {
+		return
 	}
 
 	recordingsMutex.Lock()
@@ -211,7 +220,7 @@ func recordGame(info gameInfoMetadata, resume bool) {
 	recordingsMutex.Unlock()
 
 	if !rec.HasUserMetadata() {
-		if err := rec.StoreUserMetadata(&info); err != nil {
+		if err = rec.StoreUserMetadata(&info); err != nil {
 			log.Println("recording failed to store game metadata:", err)
 			return
 		}
@@ -223,7 +232,7 @@ func recordGame(info gameInfoMetadata, resume bool) {
 		log.Println("recording " + keyName)
 	}
 
-	err = record.Record(info.PlatformID, gameId,
+	err = record.Record(info.PlatformID, gameID,
 		info.Observers.EncryptionKey, rec)
 
 	recordingsMutex.Lock()

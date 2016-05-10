@@ -52,15 +52,15 @@ func isNumber(str string) bool {
 	return true
 }
 
-func retrieve(region, gameId string) *recording.Recording {
-	if !record.IsValidPlatform(region) || !isNumber(gameId) {
+func retrieve(region, gameID string) *recording.Recording {
+	if !record.IsValidPlatform(region) || !isNumber(gameID) {
 		return nil
 	}
 
 	recordingsMutex.RLock()
 	defer recordingsMutex.RUnlock()
 
-	internalRec, found := recordings[region+"_"+gameId]
+	internalRec, found := recordings[region+"_"+gameID]
 	if !found {
 		return nil
 	}
@@ -190,7 +190,7 @@ func loadRecordings(dir []os.FileInfo, dirName string) {
 		}
 
 		key := rec.RetrieveGameInfo().Platform + "_" +
-			rec.RetrieveGameInfo().GameId
+			rec.RetrieveGameInfo().GameID
 
 		recordings[key] = internalRec
 		sortedRecordings = append(sortedRecordings, internalRec)
