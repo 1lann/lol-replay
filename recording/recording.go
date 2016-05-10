@@ -76,7 +76,7 @@ type ChunkInfo struct {
 	Duration        int `json:"duration"`
 }
 
-// Error variables to check what errors have occured.
+// Error variables to check what errors have occurred.
 var (
 	ErrMissingData         = errors.New("recording: missing data")
 	ErrCannotModify        = errors.New("recording: cannot modify read-only data")

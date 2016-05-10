@@ -16,7 +16,7 @@ import (
 
 const retryWaitDuration = time.Second * 5
 
-// Error variables to check what errors have occured.
+// Error variables to check what errors have occurred.
 var (
 	ErrNotFound        = errors.New("not found")
 	ErrUnknownPlatform = errors.New("unknown platform")

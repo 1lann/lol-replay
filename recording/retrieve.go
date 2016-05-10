@@ -44,7 +44,7 @@ func (r *Recording) HasUserMetadata() bool {
 	return r.header.UserMetadata.Length > 0
 }
 
-// RetrieveUserMetadata retrieves the arbitary user data stored by
+// RetrieveUserMetadata retrieves the arbitrary user data stored by
 // StoreUserMetadata into metadata.
 func (r *Recording) RetrieveUserMetadata(metadata interface{}) error {
 	r.mutex.Lock()
@@ -70,7 +70,7 @@ func (r *Recording) RetrieveGameInfo() GameInfo {
 }
 
 // RetrieveGameMetadataTo retrieves the recorded game metadata into w.
-// The number of bytes written to w and any errors that have occured are
+// The number of bytes written to w and any errors that have occurred are
 // returned.
 func (r *Recording) RetrieveGameMetadataTo(w io.Writer) (int, error) {
 	r.mutex.Lock()
@@ -121,7 +121,7 @@ func (r *Recording) RetrieveLastChunkInfo() ChunkInfo {
 }
 
 // RetrieveChunkTo retrieves the chunk data for a chunk ID into w. The number
-// of bytes written to w and any errors that have occured are returned.
+// of bytes written to w and any errors that have occurred are returned.
 // If the chunk ID does not exist, ErrMissingData will be returned.
 func (r *Recording) RetrieveChunkTo(num int, w io.Writer) (int, error) {
 	r.mutex.Lock()
@@ -154,7 +154,7 @@ func (r *Recording) RetrieveChunkTo(num int, w io.Writer) (int, error) {
 }
 
 // RetrieveKeyFrameTo retrieves the keyframe data into w. The number
-// of bytes written to w and any errors that have occured are returned.
+// of bytes written to w and any errors that have occurred are returned.
 // If the chunk ID does not exist, ErrMissingData will be returned.
 func (r *Recording) RetrieveKeyFrameTo(num int, w io.Writer) (int, error) {
 	r.mutex.Lock()

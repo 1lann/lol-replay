@@ -1,25 +1,26 @@
-// Package replays handles the serving of recorded data through a HTTP router.
+// Package replay handles the serving of recorded data through a HTTP router.
 package replay
 
 import (
-	"github.com/1lann/lol-replay/record"
-	"github.com/1lann/lol-replay/recording"
-	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/1lann/lol-replay/record"
+	"github.com/1lann/lol-replay/recording"
+	"github.com/julienschmidt/httprouter"
 )
 
 // PathHeader is the common path header used for requests to the spectator
 // endpoint.
 const PathHeader = "/observer-mode/rest/consumer"
 
-// A ReplayRetriever provides a recording for a given game ID and region.
+// A Retriever provides a recording for a given game ID and region.
 // A nil recording should be returned if the recording does not exist.
-type ReplayRetriever func(region, gameId string) *recording.Recording
+type Retriever func(region, gameId string) *recording.Recording
 
 type requestHandler struct {
-	retriever ReplayRetriever
+	retriever Retriever
 }
 
 type httpWriterPipe struct {
@@ -196,7 +197,7 @@ func (rh requestHandler) getKeyFrame(w http.ResponseWriter, r *http.Request, ps 
 }
 
 // Router returns a http.Handler that handles requests for recorded data.
-func Router(retriever ReplayRetriever) http.Handler {
+func Router(retriever Retriever) http.Handler {
 	handler := requestHandler{retriever}
 
 	router := httprouter.New()

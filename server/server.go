@@ -79,7 +79,7 @@ func (s *internalServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Sorry, an error occured while " +
+			w.Write([]byte("Sorry, an error occurred while " +
 				"processing your request!"))
 		}
 	}()
