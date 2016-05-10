@@ -21,7 +21,7 @@ import (
 
 // FormatVersion is the version number of the recording format. As of right
 // now, recording formats are not forwards or backwards compatible.
-const FormatVersion = 6
+const FormatVersion = 7
 
 const versionPosition = -2
 const headerSizePosition = -4
