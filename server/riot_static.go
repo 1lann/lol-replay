@@ -33,6 +33,7 @@ var currentVersion string
 var allChampions = make(map[int]championInfo)
 var championsMutex = new(sync.RWMutex)
 var staticDataAvailable bool
+var staticDataMutex = new(sync.Mutex)
 
 func maintainStaticData() {
 	for {
@@ -103,5 +104,7 @@ func updateChampions() {
 		allChampions[num] = champion
 	}
 
+	staticDataMutex.Lock()
 	staticDataAvailable = true
+	staticDataMutex.Unlock()
 }

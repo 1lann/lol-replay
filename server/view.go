@@ -230,7 +230,9 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 
 		recRenderArg.Code = "replay " + codeBody
 
+		staticDataMutex.Lock()
 		if staticDataAvailable {
+			staticDataMutex.Unlock()
 			// Find people in the game
 			championsMutex.RLock()
 			for _, player := range game.Participants {
@@ -242,6 +244,8 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 				recRenderArg.Players = append(recRenderArg.Players, playerArgs)
 			}
 			championsMutex.RUnlock()
+		} else {
+			staticDataMutex.Unlock()
 		}
 
 		recRenderArg.LegendsGG = getLegendsGGLink(rec.recording,
