@@ -155,27 +155,29 @@ func loadRecordings(dir []os.FileInfo, dirName string) {
 			continue
 		}
 
-		if path.Ext(fileInfo.Name()) != ".glr" {
+		filename := path.Base(fileInfo.Name())
+
+		if path.Ext(filename) != ".glr" {
 			continue
 		}
 
-		file, err := os.OpenFile(dirName+"/"+fileInfo.Name(), os.O_RDWR, 0666)
+		file, err := os.OpenFile(dirName+"/"+filename, os.O_RDWR, 0666)
 		if err != nil {
-			log.Println("failed to open "+fileInfo.Name()+":", err)
+			log.Println("failed to open "+filename+":", err)
 			continue
 		}
 
 		rec, err := recording.NewRecording(file)
 		if err != nil {
-			log.Println("failed to read recording "+fileInfo.Name()+":", err)
+			log.Println("failed to read recording "+filename+":", err)
 			file.Close()
 			continue
 		}
 
 		if !rec.HasGameMetadata() {
 			file.Close()
-			log.Println("deleting empty recording: " + fileInfo.Name())
-			if err := os.Remove(dirName + "/" + fileInfo.Name()); err != nil {
+			log.Println("deleting empty recording: " + filename)
+			if err := os.Remove(dirName + "/" + filename); err != nil {
 				log.Println("failed to delete empty recording:", err)
 			}
 			continue
@@ -183,7 +185,7 @@ func loadRecordings(dir []os.FileInfo, dirName string) {
 
 		internalRec := &internalRecording{
 			file:      file,
-			location:  dirName + "/" + fileInfo.Name(),
+			location:  dirName + "/" + filename,
 			rec:       rec,
 			temporary: false,
 			recording: false,

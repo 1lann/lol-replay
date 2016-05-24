@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"runtime/debug"
 	"strconv"
 	"time"
@@ -203,10 +204,12 @@ func recordGame(info gameInfoMetadata, resume bool) {
 		return
 	}
 
+	filename := path.Base(file.Name())
+
 	recordingsMutex.Lock()
 	recordings[keyName] = &internalRecording{
 		file:      file,
-		location:  config.RecordingsDirectory + "/" + file.Name(),
+		location:  config.RecordingsDirectory + "/" + filename,
 		rec:       rec,
 		temporary: false,
 		recording: true,
