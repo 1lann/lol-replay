@@ -9,6 +9,7 @@ import (
 	"path"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -86,6 +87,37 @@ func (s *internalServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(r.URL.Path, replay.PathHeader) {
 		s.replayRouter.ServeHTTP(w, r)
+		return
+	}
+
+	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api") {
+		w.Header().Set("Access-Control-Allow-Methods", "GET")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+
+		err := r.ParseForm()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"invalid URL query"}`))
+			return
+		}
+
+		num, err := strconv.Atoi(r.Form.Get("n"))
+		if err != nil || num <= 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"invalid n value"}`))
+			return
+		}
+
+		skip, _ := strconv.Atoi(r.Form.Get("skip"))
+		if skip < 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"invalid skip value"}`))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		writeLastGames(skip, num, r, w)
 		return
 	}
 

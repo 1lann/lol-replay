@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
+	"time"
 )
 
 // HasChunk returns whether or not the specified chunk ID already exists in
@@ -67,6 +68,17 @@ func (r *Recording) RetrieveUserMetadata(metadata interface{}) error {
 // RetrieveGameInfo retrieves the recorded game's basic information.
 func (r *Recording) RetrieveGameInfo() GameInfo {
 	return r.header.Info
+}
+
+// IsComplete returns whether or not the recording has been declared as
+// being complete or not.
+func (r *Recording) IsComplete() bool {
+	return r.header.IsComplete
+}
+
+// LastWriteTime returns the last time data was written to the recording.
+func (r *Recording) LastWriteTime() time.Time {
+	return r.header.LastWriteTime
 }
 
 // RetrieveGameMetadataTo retrieves the recorded game metadata into w.

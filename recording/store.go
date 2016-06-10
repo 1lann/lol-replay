@@ -31,12 +31,6 @@ func (r *Recording) DeclareComplete() error {
 	return r.writeHeader()
 }
 
-// IsComplete returns whether or not the recording has been declared as
-// being complete or not.
-func (r *Recording) IsComplete() bool {
-	return r.header.IsComplete
-}
-
 // StoreUserMetadata stores arbitrary data with the recording for convenience.
 // Note that the user metadata is read-only, and thus can only be stored once.
 // It can be retrieved with RetrieveUserMetadata.

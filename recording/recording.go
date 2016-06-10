@@ -21,7 +21,7 @@ import (
 
 // FormatVersion is the version number of the recording format. As of right
 // now, recording formats are not forwards or backwards compatible.
-const FormatVersion = 7
+const FormatVersion = 8
 
 const versionPosition = -2
 const headerSizePosition = -4
@@ -41,6 +41,7 @@ type recordingHeader struct {
 	Info           GameInfo
 	UserMetadata   segment
 	IsComplete     bool
+	LastWriteTime  time.Time
 }
 
 // GameInfo represents meta information for a game required to play it back
@@ -174,6 +175,8 @@ func (r *Recording) readHeader() error {
 }
 
 func (r *Recording) writeHeader() error {
+	r.header.LastWriteTime = time.Now()
+
 	if _, err := r.file.Seek(int64(r.position), 0); err != nil {
 		return err
 	}

@@ -28,11 +28,6 @@ var platformToRegion = map[string]string{
 	"PBE1": "pbe",
 }
 
-type player struct {
-	ID       string `json:"id"`
-	Platform string `json:"platform"`
-}
-
 type gameInfoMetadata struct {
 	BannedChampions []struct {
 		ChampionID int `json:"championId"`
@@ -250,7 +245,7 @@ func recordGame(info gameInfoMetadata, resume bool) {
 	log.Println("recording " + keyName + " complete")
 }
 
-func (p player) currentGameInfo(apiKey string) (gameInfoMetadata, bool) {
+func (p configPlayer) currentGameInfo(apiKey string) (gameInfoMetadata, bool) {
 	url := "https://" + platformToRegion[p.Platform] + ".api.pvp.net/observer-mode/rest" +
 		"/consumer/getSpectatorGameInfo/" + p.Platform + "/" + p.ID +
 		"?api_key=" + apiKey

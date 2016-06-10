@@ -26,6 +26,7 @@ type recordingArg struct {
 	Players          []playerArg
 	Recording        bool
 	Ago              string
+	Duration         string
 	Queue            string
 	CapitalizedQueue string
 	Region           string
@@ -199,6 +200,8 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 		recRenderArg.Recording = rec.recording
 		recRenderArg.Region = strings.ToUpper(platformToRegion[info.Platform])
 
+		duration := int(rec.rec.LastWriteTime().Sub(info.RecordTime).Minutes())
+
 		if err != nil {
 			if rec.recording {
 				continue
@@ -207,7 +210,9 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 			log.Println("render: failed to get metadata for "+rec.location+":",
 				err)
 			recRenderArg.NoMetadata = true
-			recRenderArg.Ago = capitalize(humanize.Time(info.RecordTime))
+			recRenderArg.Ago = capitalize(humanize.Time(
+				rec.rec.LastWriteTime()))
+			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
 		} else {
 			recRenderArg.NoMetadata = false
 
@@ -220,7 +225,8 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 			recRenderArg.Queue = getQueue(game.GameQueueConfigID)
 			recRenderArg.AQueue = aOrAn(recRenderArg.Queue)
 			recRenderArg.CapitalizedQueue = capitalize(recRenderArg.Queue)
-			recRenderArg.Ago = humanize.Time(info.RecordTime)
+			recRenderArg.Ago = humanize.Time(rec.rec.LastWriteTime())
+			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
 		}
 
 		host := strings.Split(r.Host, ":")
@@ -393,12 +399,12 @@ var pageSource = `<!DOCTYPE html>
 							{{- end}}
 						</div>
 						{{- if .Recording}}
-						<p><span class="record"></span>{{.CapitalizedQueue}} game being recorded on {{.Region}}...</p>
+						<p><span class="record"></span>{{.CapitalizedQueue}} game being recorded on {{.Region}} for {{.Duration}}...</p>
 						{{- else}}
-						<p>{{.CapitalizedQueue}} game played {{.Ago}} on {{.Region}}.</p>
+						<p>A {{.Duration}} {{.Queue}} game played {{.Ago}} on {{.Region}}.</p>
 						{{- end}}
 						{{- else}}
-						<p>{{.Ago}} on {{.Region}}.</p>
+						<p>A {{.Duration}} game recorded {{.Ago}} on {{.Region}}.</p>
 						{{- end}}
 						{{- if not .Recording}}
 						<div class="code-area">
