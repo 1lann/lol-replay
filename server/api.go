@@ -35,7 +35,7 @@ func writeLastGames(skip int, games int, r *http.Request, w io.Writer) {
 		n = len(sortedRecordings)
 	}
 
-	recordings := make([]apiRecording, n)
+	var recordings []apiRecording
 
 	if skip >= n {
 		w.Write([]byte("[]"))
@@ -46,7 +46,7 @@ func writeLastGames(skip int, games int, r *http.Request, w io.Writer) {
 	func() {
 		defer recordingsMutex.RUnlock()
 
-		for i := skip; i < n; i++ {
+		for i := len(sortedRecordings) - 1; i >= len(sortedRecordings)-n; i++ {
 			rec := sortedRecordings[i].rec
 
 			var game gameInfoMetadata
