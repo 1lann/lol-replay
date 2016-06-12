@@ -212,7 +212,7 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 			recRenderArg.NoMetadata = true
 			recRenderArg.Ago = capitalize(humanize.Time(
 				rec.rec.LastWriteTime()))
-			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
+			recRenderArg.Duration = strconv.Itoa(duration) + " minutes"
 		} else {
 			recRenderArg.NoMetadata = false
 
@@ -226,7 +226,7 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 			recRenderArg.AQueue = aOrAn(recRenderArg.Queue)
 			recRenderArg.CapitalizedQueue = capitalize(recRenderArg.Queue)
 			recRenderArg.Ago = humanize.Time(rec.rec.LastWriteTime())
-			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
+			recRenderArg.Duration = strconv.Itoa(duration) + " minutes"
 		}
 
 		host := strings.Split(r.Host, ":")
