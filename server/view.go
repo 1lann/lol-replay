@@ -212,7 +212,7 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 			recRenderArg.NoMetadata = true
 			recRenderArg.Ago = capitalize(humanize.Time(
 				rec.rec.LastWriteTime()))
-			recRenderArg.Duration = strconv.Itoa(duration) + " minutes"
+			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
 		} else {
 			recRenderArg.NoMetadata = false
 
@@ -226,7 +226,7 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 			recRenderArg.AQueue = aOrAn(recRenderArg.Queue)
 			recRenderArg.CapitalizedQueue = capitalize(recRenderArg.Queue)
 			recRenderArg.Ago = humanize.Time(rec.rec.LastWriteTime())
-			recRenderArg.Duration = strconv.Itoa(duration) + " minutes"
+			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
 		}
 
 		host := strings.Split(r.Host, ":")
@@ -399,12 +399,12 @@ var pageSource = `<!DOCTYPE html>
 							{{- end}}
 						</div>
 						{{- if .Recording}}
-						<p><span class="record"></span>{{.CapitalizedQueue}} game being recorded on {{.Region}} for {{.Duration}}...</p>
+						<p><span class="record"></span>{{.CapitalizedQueue}} game being recorded on {{.Region}} for {{.Duration}}s...</p>
 						{{- else}}
 						<p>A {{.Duration}} {{.Queue}} game played {{.Ago}} on {{.Region}}.</p>
 						{{- end}}
 						{{- else}}
-						<p>A {{.Duration}} game recorded {{.Ago}} on {{.Region}}.</p>
+						<p>A {{.Duration}} game played {{.Ago}} on {{.Region}}.</p>
 						{{- end}}
 						{{- if not .Recording}}
 						<div class="code-area">
