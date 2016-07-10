@@ -36,6 +36,12 @@ type recorder struct {
 
 var showDebug = os.Getenv("GLR_DEBUG") != ""
 
+func init() {
+	if showDebug {
+		log.Println("record: GLR_DEBUG enabled")
+	}
+}
+
 // Record starts a new recording that writes into a *recording.Recording
 // and blocks until the recording ends or an error occurs. Note that partial
 // data may be written to the recording, even if the recording was
