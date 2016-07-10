@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -132,6 +133,10 @@ func (r *recorder) storeChunk(frame int) error {
 		return nil
 	}
 
+	if showDebug {
+		log.Println("getting chunk:", frame)
+	}
+
 	resp, err := requestURL(r.platformURL +
 		"/observer-mode/rest/consumer/getGameDataChunk/" + r.platform + "/" +
 		r.gameID + "/" + strconv.Itoa(frame) + "/token")
@@ -152,6 +157,10 @@ func (r *recorder) storeKeyFrame(frame int) error {
 
 	if r.recording.HasKeyFrame(frame) {
 		return nil
+	}
+
+	if showDebug {
+		log.Println("getting key frame:", frame)
 	}
 
 	resp, err := requestURL(r.platformURL +

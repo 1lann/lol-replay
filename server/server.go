@@ -148,6 +148,10 @@ func main() {
 		loadRecordings(dir, config.RecordingsDirectory)
 	}
 
+	if len(config.Players) == 0 {
+		log.Fatal("you cannot start the server without any monitored players")
+	}
+
 	internal := &internalServer{replay.Router(retrieve)}
 
 	c := make(chan os.Signal, 1)

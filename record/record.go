@@ -5,6 +5,8 @@ package record
 
 import (
 	"bytes"
+	"log"
+	"os"
 	"time"
 
 	"github.com/1lann/lol-replay/recording"
@@ -31,6 +33,8 @@ type recorder struct {
 	gameID      string
 	gaps        bool
 }
+
+var showDebug = os.Getenv("GLR_DEBUG") != ""
 
 // Record starts a new recording that writes into a *recording.Recording
 // and blocks until the recording ends or an error occurs. Note that partial
@@ -73,8 +77,20 @@ func Record(platform, gameID, encryptionKey string,
 		return err
 	}
 
+	if showDebug {
+		log.Println("recording game " + gameID + " on platform " + platform +
+			" on version " + version + " with encryption key " + encryptionKey)
+	}
+
 	if err := thisRecorder.waitForFirstChunk(); err != nil {
+		if showDebug {
+			log.Println("waitForFirstChunk error:", err)
+		}
 		return err
+	}
+
+	if showDebug {
+		log.Println("got first chunk")
 	}
 
 	if err := thisRecorder.recordFrames(resumption); err != nil {
@@ -94,6 +110,10 @@ func Record(platform, gameID, encryptionKey string,
 }
 
 func (r *recorder) getStartupFrames(meta metadata) error {
+	if showDebug {
+		log.Println("getting startup chunks to", meta.StartupChunk)
+	}
+
 	// Get the startup frames
 	for i := 1; i <= meta.StartupChunk; i++ {
 		for {
@@ -182,6 +202,13 @@ func (r *recorder) handleResumption(chunk recording.ChunkInfo) {
 
 func (r *recorder) storeChunksAndFrames(chunk recording.ChunkInfo, lastChunkID,
 	firstChunkID, lastKeyFrame, firstKeyFrame int) error {
+
+	if showDebug {
+		log.Println("storeChunksAndFrames lastChunkID:", lastChunkID,
+			"firstChunkID:", firstChunkID, "lastKeyFrame:", lastKeyFrame,
+			"firstKeyFrame:", firstKeyFrame)
+	}
+
 	if chunk.CurrentChunk > lastChunkID {
 		for i := lastChunkID + 1; i <= chunk.CurrentChunk; i++ {
 			if err := r.storeChunk(i); err != nil {
@@ -257,6 +284,10 @@ func (r *recorder) recordFrames(resumption bool) error {
 		if resumption {
 			lastChunkID = chunk.CurrentChunk
 			lastKeyFrame = chunk.CurrentKeyFrame
+
+			if showDebug {
+				log.Println("resuming recording")
+			}
 
 			r.handleResumption(chunk)
 
