@@ -25,6 +25,9 @@ LoL Replay currently assumes your client is running OS X and has [LoL Spectator]
 
 If you need help, have an issue or want to ask a question, feel free to contact me by [email](mailto:me@chuie.io) or by making an issue on [GitHub](https://github.com/1lann/LoL-Replay/issues).
 
+## Using Docker
+The LoL Replay server is also available as an image on Docker. Refer to the [Docker Hub page](https://hub.docker.com/r/1lann/lol-replay/) for more information.
+
 ## Screenshots
 
 ![Top of LoL Replay's web interface](http://i.imgur.com/cizHmcs.png)
