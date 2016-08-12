@@ -1,4 +1,4 @@
-FROM golang:1.7
+FROM golang:1.7-alpine
 RUN go get -u github.com/1lann/lol-replay/server
 RUN mkdir /lol-replay
 RUN echo '{\n\
