@@ -317,6 +317,7 @@ var allQueues = map[int]string{
 	313: "normal blind",
 	400: "dynamic queue unranked",
 	410: "dynamic queue ranked",
+	440: "ranked flex",
 }
 
 func getQueue(id int) string {
