@@ -32,7 +32,6 @@ type recordingArg struct {
 	Region           string
 	AQueue           string
 	Code             string
-	LegendsGG        string
 }
 
 type renderArg struct {
@@ -92,36 +91,6 @@ func serveView(w http.ResponseWriter, r *http.Request) {
 		if err := pageTemplate.Execute(w, templateRenderArg); err != nil {
 			w.Write([]byte("template render error"))
 			log.Println("render: template error:", err)
-		}
-	}
-}
-
-func getLegendsGGLink(recording bool, recRenderArg recordingArg,
-	info recording.GameInfo, game gameInfoMetadata) string {
-	if recording {
-		if len(recRenderArg.Players) > 0 {
-			return "http://www.legends.gg/current/" +
-				platformToRegion[info.Platform] + "/" +
-				recRenderArg.Players[0].Summoner
-		} else if len(game.Participants) > 0 {
-			return "http://www.legends.gg/current/" +
-				platformToRegion[info.Platform] + "/" +
-				game.Participants[0].SummonerName
-		} else {
-			return ""
-		}
-	} else {
-		if len(recRenderArg.Players) > 0 {
-			return "http://www.legends.gg/" +
-				platformToRegion[info.Platform] + "/" +
-				recRenderArg.Players[0].Summoner + "/match/" + info.GameID
-		} else if len(game.Participants) > 0 {
-			return "http://www.legends.gg/" +
-				platformToRegion[info.Platform] + "/" +
-				game.Participants[0].SummonerName + "/match/" + info.GameID
-		} else {
-			return "http://www.legends.gg/" +
-				platformToRegion[info.Platform] + "/_/match/" + info.GameID
 		}
 	}
 }
@@ -253,9 +222,6 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 		} else {
 			staticDataMutex.Unlock()
 		}
-
-		recRenderArg.LegendsGG = getLegendsGGLink(rec.recording,
-			recRenderArg, info, game)
 
 		renderTemplateArg.Recordings =
 			append(renderTemplateArg.Recordings, recRenderArg)
@@ -416,7 +382,6 @@ var pageSource = `<!DOCTYPE html>
 						{{- if not .Recording}}
 						<a class="card-footer-item" onclick="copyCode(this)">Copy to clipboard</a>
 						{{- end}}
-						<a class="card-footer-item" href="{{.LegendsGG}}" target="_blank">Show on Legends.GG<i class="fa fa-external-link"></i></a>
 					</footer>
 				</div>
 			</div>

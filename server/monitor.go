@@ -8,6 +8,7 @@ import (
 	"path"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/1lann/lol-replay/record"
@@ -246,9 +247,9 @@ func recordGame(info gameInfoMetadata, resume bool) {
 }
 
 func (p configPlayer) currentGameInfo(apiKey string) (gameInfoMetadata, bool) {
-	url := "https://" + platformToRegion[p.Platform] + ".api.pvp.net/observer-mode/rest" +
-		"/consumer/getSpectatorGameInfo/" + p.Platform + "/" + p.ID +
-		"?api_key=" + apiKey
+	url := "https://" + strings.ToLower(p.Platform) +
+		".api.riotgames.com/lol/spectator/v3/active-games/by-summoner/" +
+		"/consumer/getSpectatorGameInfo/" + p.Platform + "/" + p.ID
 
 	for i := 0; i < 3; i++ {
 		resp, err := http.Get(url)

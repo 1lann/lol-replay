@@ -58,7 +58,7 @@ func writeLastGames(skip int, games int, r *http.Request, w io.Writer) {
 				" " + info.GameID + " " + info.Platform
 
 			thisRecording := apiRecording{
-				Region:        platformToRegion[info.Platform],
+				Region:        info.Platform,
 				RecordTime:    info.RecordTime,
 				LastWriteTime: rec.LastWriteTime(),
 				IsRecording:   sortedRecordings[i].recording,
