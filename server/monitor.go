@@ -248,8 +248,7 @@ func recordGame(info gameInfoMetadata, resume bool) {
 
 func (p configPlayer) currentGameInfo(apiKey string) (gameInfoMetadata, bool) {
 	url := "https://" + strings.ToLower(p.Platform) +
-		".api.riotgames.com/lol/spectator/v3/active-games/by-summoner/" +
-		"/consumer/getSpectatorGameInfo/" + p.Platform + "/" + p.ID
+		".api.riotgames.com/lol/spectator/v3/active-games/by-summoner/" + p.ID
 
 	for i := 0; i < 3; i++ {
 		resp, err := http.Get(url)
