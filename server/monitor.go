@@ -120,7 +120,7 @@ func monitorPlayers() {
 			recordingsMutex.Unlock()
 			go recordGame(info, resume)
 		}
-	// }
+	}
 }
 
 // recordingsMutex must be Locked before cleanUp is called.
