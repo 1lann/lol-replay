@@ -95,7 +95,7 @@ func serveView(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getPlayerArg(summonerID int64, summonerName string, championID int,
+func getPlayerArg(summonerID string, summonerName string, championID int,
 	info recording.GameInfo) (playerArg, bool) {
 	var thisPlayer playerArg
 
@@ -106,7 +106,7 @@ func getPlayerArg(summonerID int64, summonerName string, championID int,
 			continue
 		}
 
-		if monitoredPlayer.ID != strconv.FormatInt(summonerID, 10) {
+		if monitoredPlayer.ID != summonerID {
 			continue
 		}
 

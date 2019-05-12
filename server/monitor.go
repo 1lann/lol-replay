@@ -59,7 +59,7 @@ type gameInfoMetadata struct {
 		} `json:"runes"`
 		Spell1Id     int    `json:"spell1Id"`
 		Spell2Id     int    `json:"spell2Id"`
-		SummonerID   int64  `json:"summonerId"`
+		SummonerID   string `json:"summonerId"`
 		SummonerName string `json:"summonerName"`
 		TeamID       int    `json:"teamId"`
 	} `json:"participants"`
@@ -69,13 +69,16 @@ type gameInfoMetadata struct {
 func monitorPlayers() {
 	waitSeconds := float64(config.RefreshRate) / float64(len(config.Players))
 	waitPeriod := time.Millisecond * time.Duration(waitSeconds*1000.0)
+	log.Println("Monitoring...")
 
 	for {
 		for _, player := range config.Players {
 			time.Sleep(waitPeriod)
-
+			log.Println("Trying: " + player.ID)
 			info, ok := player.currentGameInfo(config.RiotAPIKey)
+
 			if !ok {
+				log.Println("Ops., got a problem...")
 				continue
 			}
 
@@ -248,11 +251,12 @@ func recordGame(info gameInfoMetadata, resume bool) {
 
 func (p configPlayer) currentGameInfo(apiKey string) (gameInfoMetadata, bool) {
 	url := "https://" + strings.ToLower(p.Platform) +
-		".api.riotgames.com/lol/spectator/v3/active-games/by-summoner/" + p.ID +
+		".api.riotgames.com/lol/spectator/v4/active-games/by-summoner/" + p.ID +
 		"?api_key=" + apiKey
 
 	for i := 0; i < 3; i++ {
 		resp, err := http.Get(url)
+
 		if err != nil {
 			log.Println("URL:", url)
 			log.Println("current game error:", err)
@@ -275,7 +279,10 @@ func (p configPlayer) currentGameInfo(apiKey string) (gameInfoMetadata, bool) {
 		var info gameInfoMetadata
 		err = dec.Decode(&info)
 		resp.Body.Close()
+
 		if err != nil {
+			log.Println("URL:", url)
+			log.Println("current error:", err)
 			return gameInfoMetadata{}, false
 		}
 
