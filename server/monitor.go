@@ -82,8 +82,6 @@ func monitorPlayers() {
 				continue
 			}
 
-			log.Println("Opa, tudo certo!!!")
-
 			gameID := strconv.FormatInt(info.GameID, 10)
 			keyName := info.PlatformID + "_" + gameID
 			resume := false
