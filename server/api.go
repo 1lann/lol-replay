@@ -75,7 +75,7 @@ func writeLastGames(skip int, games int, r *http.Request, w io.Writer) {
 				thisRecording.Players = append(thisRecording.Players, apiPlayer{
 					ProfileIconID: player.ProfileIconID,
 					SummonerName:  player.SummonerName,
-					SummonerID:    strconv.FormatInt(player.SummonerID, 10),
+					SummonerID:    player.SummonerID,
 					ChampionName:  championName,
 					ChampionID:    player.ChampionID,
 				})
