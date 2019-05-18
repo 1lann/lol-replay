@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sort"
 
 	"github.com/1lann/lol-replay/recording"
 	"github.com/dustin/go-humanize"
@@ -21,6 +22,7 @@ type playerArg struct {
 }
 
 type recordingArg struct {
+	GameID           string
 	IsComplete       bool
 	NoMetadata       bool
 	Players          []playerArg
@@ -44,11 +46,15 @@ type renderArg struct {
 }
 
 var pageTemplate *template.Template
+var pageBatTemplate *template.Template
 
 func serveView(w http.ResponseWriter, r *http.Request) {
 	var currentPage int
 	if r.URL.Path == "/" {
 		currentPage = 1
+	} else if strings.HasPrefix(r.URL.Path, "/watch") {
+		serveBatView(w, r)
+		return
 	} else {
 		num, err := strconv.Atoi(r.URL.Path[1:])
 		if err != nil {
@@ -93,6 +99,138 @@ func serveView(w http.ResponseWriter, r *http.Request) {
 			log.Println("render: template error:", err)
 		}
 	}
+}
+
+func serveBatView(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"invalid URL query"}`))
+		return
+	}
+
+	GameID, err := strconv.Atoi(r.Form.Get("id"))
+
+	if err != nil || GameID <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"invalid id value"}`))
+		return
+	}
+
+	recordingPosition := getRecordingPositionByGameId(strconv.Itoa(GameID))
+
+	if len(sortedRecordings) == recordingPosition {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"game not found"}`))
+		return
+	}
+
+	recRenderArg := getRecordingArg(recordingPosition, r)
+
+	w.Header().Set("Content-Description", "File Transfer");
+	w.Header().Set("Content-Disposition", "attachment; filename=LOL_Observer_" + recRenderArg.GameID + "_spectate.bat");
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		w.WriteHeader(http.StatusOK)
+
+		writer := gzip.NewWriter(w)
+		if err := pageBatTemplate.Execute(writer, recRenderArg); err != nil {
+			writer.Write([]byte("template render error"))
+			log.Println("render: template error:", err)
+		}
+		writer.Close()
+	} else {
+		w.WriteHeader(http.StatusOK)
+		if err := pageBatTemplate.Execute(w, recRenderArg); err != nil {
+			w.Write([]byte("template render error"))
+			log.Println("render: template error:", err)
+		}
+	}
+}
+
+func getRecordingPositionByGameId(GameID string) int {
+	return sort.Search(len(sortedRecordings), func (i int) bool {
+		rec := sortedRecordings[i]
+		info := rec.rec.RetrieveGameInfo()
+
+        return GameID == info.GameID
+	})
+}
+
+func getRecordingArg(i int, r *http.Request) recordingArg {
+	rec := sortedRecordings[i]
+	var recRenderArg recordingArg
+
+	if rec.temporary {
+		return recRenderArg
+	}
+
+	var game gameInfoMetadata
+	err := rec.rec.RetrieveUserMetadata(&game)
+	info := rec.rec.RetrieveGameInfo()
+
+	recRenderArg.Recording = rec.recording
+	recRenderArg.Region = strings.ToUpper(platformToRegion[info.Platform])
+	recRenderArg.GameID = info.GameID
+
+	duration := int(rec.rec.LastWriteTime().Sub(info.RecordTime).Minutes())
+
+	if err != nil {
+		if rec.recording {
+			return recRenderArg
+		}
+
+		log.Println("render: failed to get metadata for "+rec.location+":",
+			err)
+		recRenderArg.NoMetadata = true
+		recRenderArg.Ago = capitalize(humanize.Time(
+			rec.rec.LastWriteTime()))
+		recRenderArg.Duration = strconv.Itoa(duration) + " minute"
+	} else {
+		recRenderArg.NoMetadata = false
+
+		if !rec.recording {
+			recRenderArg.IsComplete = rec.rec.IsComplete()
+		} else {
+			recRenderArg.IsComplete = true
+		}
+
+		recRenderArg.Queue = getQueue(game.GameQueueConfigID)
+		recRenderArg.AQueue = aOrAn(recRenderArg.Queue)
+		recRenderArg.CapitalizedQueue = capitalize(recRenderArg.Queue)
+		recRenderArg.Ago = humanize.Time(rec.rec.LastWriteTime())
+		recRenderArg.Duration = strconv.Itoa(duration) + " minute"
+	}
+
+	host := strings.Split(r.Host, ":")
+
+	codeBody := host[0] + ":" + strconv.Itoa(config.ShowReplayPortAs) +
+		" " + info.EncryptionKey + " " + info.GameID + " " + info.Platform
+
+	recRenderArg.Code = codeBody
+
+	staticDataMutex.Lock()
+	if staticDataAvailable {
+		staticDataMutex.Unlock()
+		// Find people in the game
+		championsMutex.RLock()
+		for _, player := range game.Participants {
+			playerArgs, ok := getPlayerArg(player.SummonerID,
+				player.SummonerName, player.ChampionID, info)
+			if !ok {
+				return recRenderArg
+			}
+			recRenderArg.Players = append(recRenderArg.Players, playerArgs)
+		}
+		championsMutex.RUnlock()
+	} else {
+		staticDataMutex.Unlock()
+	}
+
+	return recRenderArg
 }
 
 func getPlayerArg(summonerID string, summonerName string, championID int,
@@ -143,7 +281,7 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 	numPages := int(math.Ceil(float64(len(sortedRecordings)) /
 		float64(config.ShowPerPage)))
 
-	renderTemplateArg := renderArg{
+	renderTemplateArg := renderArg {
 		CurrentPage:  currentPage,
 		Pages:        makePages(numPages),
 		NextPage:     currentPage + 1,
@@ -155,73 +293,7 @@ func getRenderArg(r *http.Request, currentPage int) renderArg {
 		config.ShowPerPage) - 1; i >= 0 && i > len(sortedRecordings)-
 		(currentPage*config.ShowPerPage)-1; i-- {
 
-		var recRenderArg recordingArg
-		rec := sortedRecordings[i]
-
-		if rec.temporary {
-			continue
-		}
-
-		var game gameInfoMetadata
-		err := rec.rec.RetrieveUserMetadata(&game)
-		info := rec.rec.RetrieveGameInfo()
-
-		recRenderArg.Recording = rec.recording
-		recRenderArg.Region = strings.ToUpper(platformToRegion[info.Platform])
-
-		duration := int(rec.rec.LastWriteTime().Sub(info.RecordTime).Minutes())
-
-		if err != nil {
-			if rec.recording {
-				continue
-			}
-
-			log.Println("render: failed to get metadata for "+rec.location+":",
-				err)
-			recRenderArg.NoMetadata = true
-			recRenderArg.Ago = capitalize(humanize.Time(
-				rec.rec.LastWriteTime()))
-			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
-		} else {
-			recRenderArg.NoMetadata = false
-
-			if !rec.recording {
-				recRenderArg.IsComplete = rec.rec.IsComplete()
-			} else {
-				recRenderArg.IsComplete = true
-			}
-
-			recRenderArg.Queue = getQueue(game.GameQueueConfigID)
-			recRenderArg.AQueue = aOrAn(recRenderArg.Queue)
-			recRenderArg.CapitalizedQueue = capitalize(recRenderArg.Queue)
-			recRenderArg.Ago = humanize.Time(rec.rec.LastWriteTime())
-			recRenderArg.Duration = strconv.Itoa(duration) + " minute"
-		}
-
-		host := strings.Split(r.Host, ":")
-
-		codeBody := host[0] + ":" + strconv.Itoa(config.ShowReplayPortAs) +
-			" " + info.EncryptionKey + " " + info.GameID + " " + info.Platform
-
-		recRenderArg.Code = "replay " + codeBody
-
-		staticDataMutex.Lock()
-		if staticDataAvailable {
-			staticDataMutex.Unlock()
-			// Find people in the game
-			championsMutex.RLock()
-			for _, player := range game.Participants {
-				playerArgs, ok := getPlayerArg(player.SummonerID,
-					player.SummonerName, player.ChampionID, info)
-				if !ok {
-					continue
-				}
-				recRenderArg.Players = append(recRenderArg.Players, playerArgs)
-			}
-			championsMutex.RUnlock()
-		} else {
-			staticDataMutex.Unlock()
-		}
+		recRenderArg := getRecordingArg(i, r)
 
 		renderTemplateArg.Recordings =
 			append(renderTemplateArg.Recordings, recRenderArg)
@@ -283,6 +355,8 @@ var allQueues = map[int]string{
 	313: "normal blind",
 	400: "dynamic queue unranked",
 	410: "dynamic queue ranked",
+	420: "ranked solo",
+	430: "blind pick",
 	440: "ranked flex",
 }
 
@@ -297,6 +371,7 @@ func getQueue(id int) string {
 
 func init() {
 	pageTemplate = template.Must(template.New("page").Parse(pageSource))
+	pageBatTemplate = template.Must(template.New("page").Parse(pageBatSource))
 }
 
 var pageSource = `<!DOCTYPE html>
@@ -375,7 +450,7 @@ var pageSource = `<!DOCTYPE html>
 						{{- end}}
 						{{- if not .Recording}}
 						<div class="code-area">
-							<textarea readonly>{{.Code}}</textarea>
+							<textarea readonly>replay {{.Code}}</textarea>
 						</div>
 						{{- end}}
 					</div>
@@ -383,6 +458,7 @@ var pageSource = `<!DOCTYPE html>
 						{{- if not .Recording}}
 						<a class="card-footer-item" onclick="copyCode(this)">Copy to clipboard</a>
 						{{- end}}
+						<a class="card-footer-item" href="/watch?id={{.GameID}}">Spectate</a>
 					</footer>
 				</div>
 			</div>
@@ -522,3 +598,95 @@ var flashButton = function(elem, success) {
 </script>
 </body>
 </html>`
+
+var pageBatSource = `SETLOCAL enableextensions enabledelayedexpansion
+@echo off
+
+echo -----------------------
+echo Spectate
+echo -----------------------
+
+set RADS_PATH="C:\Riot Games\League of Legends"
+
+if exist "%RADS_PATH%\Game" (
+	cd /d "!RADS_PATH!\Config"
+	for /F "delims=" %%a in ('find "        locale: " LeagueClientSettings.yaml') do set "locale=%%a"
+	for /F "tokens=2 delims=: " %%a in ("!locale!") do set "locale=%%a"
+
+	SET RADS_PATH="!RADS_PATH!\Game"
+	@cd /d !RADS_PATH!
+
+	if exist "League of Legends.exe" (
+		@start "" "League of Legends.exe" "8394" "LoLLauncher.exe" "" "spectator {{.Code}}" "-UseRads" "-Locale=!locale!"
+		goto :eof
+	)
+)
+
+if exist "%RADS_PATH%\RADS" (
+	SET RADS_PATH="!RADS_PATH!\RADS"
+	@cd /d !RADS_PATH!
+
+	@cd /d "!RADS_PATH!\projects"
+	for /d %%D in (league_client_*) do (
+	    for /F "tokens=3,4 delims=_ " %%a in ("%%~nxD") do (
+	        set locale=%%a_%%b
+	    )
+	)
+
+	for /l %%a in (1,1,100) do if "!RADS_PATH:~-1!"==" " set RADS_PATH=!RADS_PATH:~0,-1!
+	@cd /d "!RADS_PATH!\solutions\lol_game_client_sln\releases"
+
+	set /a v0=0, v1=0, v2=0, v3=0
+	set init=0
+	for /d %%A in ("!RADS_PATH!\solutions\lol_game_client_sln\releases\*") do (
+		set currentDirectory=%%~nxA
+
+		for /F "tokens=1,2,3,4 delims=." %%i in ("!currentDirectory!") do (
+			set /a test=%%i*1, test2=%%j*1, test3=%%k*1, test4=%%l*1
+
+			if !init! equ 0 (
+				set /a init=1, flag=1
+			) else (
+				set flag=0
+
+				if !test! gtr !v0! (
+					set flag=1
+				) else (
+					if !test2! gtr !v1! (
+						set flag=1
+					) else (
+						if !test3! gtr !v2! (
+							set flag=1
+						) else (
+							if !test4! gtr !v3! (
+								set flag=1
+							)
+						)
+					)
+				)
+			)
+
+			if !flag! gtr 0 (
+				set /a v0=!test!, v1=!test2!, v2=!test3!, v3=!test4!
+			)
+		)
+	)
+
+	if !init! equ 0 goto cannotFind
+	set lolver=!v0!.!v1!.!v2!.!v3!
+
+	@cd /d "!RADS_PATH!\solutions\lol_game_client_sln\releases\!lolver!\deploy"
+	if exist "League of Legends.exe" (
+		@start "" "League of Legends.exe" "8394" "LoLLauncher.exe" "" "spectator {{.Code}}" "-UseRads" "-Locale=!locale!"
+		goto :eof
+	)
+)
+
+echo ===================
+echo KR: LOL
+echo EN: Cannot found LOL directory path for automatic.
+echo ===================
+@pause
+
+:eof
+`

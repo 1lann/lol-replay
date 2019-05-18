@@ -78,7 +78,6 @@ func monitorPlayers() {
 			info, ok := player.currentGameInfo(config.RiotAPIKey)
 
 			if !ok {
-				log.Println("Ops., got a problem...")
 				continue
 			}
 
