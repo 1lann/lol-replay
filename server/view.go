@@ -457,8 +457,8 @@ var pageSource = `<!DOCTYPE html>
 					<footer class="card-footer">
 						{{- if not .Recording}}
 						<a class="card-footer-item" onclick="copyCode(this)">Copy to clipboard</a>
-						{{- end}}
 						<a class="card-footer-item" href="/watch?id={{.GameID}}">Spectate</a>
+						{{- end}}
 					</footer>
 				</div>
 			</div>
