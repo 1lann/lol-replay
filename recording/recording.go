@@ -113,14 +113,13 @@ func NewRecording(file io.ReadWriteSeeker) (*Recording, error) {
 func (r *Recording) readHeaderUnit16(offset int) (uint16, int, error) {
 	pos, err := r.file.Seek(int64(offset), 2)
 	if err != nil {
-		if pathErr, ok := err.(*os.PathError); ok {
-			if pathErr.Err == syscall.EINVAL {
-				// Cannot seek to this point, declare data as missing
-				return 0, 0, ErrMissingData
-			}
-		}
-
-		return 0, 0, err
+		// if pathErr, ok := err.(*os.PathError); ok {
+		// 	if pathErr.Err == syscall.EINVAL {
+		// 		// Cannot seek to this point, declare data as missing
+		// 		return 0, 0, ErrMissingData
+		// 	}
+		// }
+		return 0, 0, ErrMissingData
 	}
 
 	var number uint16
