@@ -2,12 +2,17 @@
 package replay
 
 import (
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/1lann/lol-replay/record"
 	"github.com/1lann/lol-replay/recording"
+	"github.com/Clever/leakybucket"
+	memorybucket "github.com/Clever/leakybucket/memory"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -15,12 +20,27 @@ import (
 // endpoint.
 const PathHeader = "/observer-mode/rest/consumer"
 
+// A client is identified by a IP/gameID pair.
+// We want to identify a client because in order to start a spectating session from the
+// beginning, we need to "pretend" that the last available chunk is one of the first chunks.
+// Therefore if the client is new, we modify the behaviour of getLastChunkInfo.
+type client struct {
+	IP     string
+	gameID string
+}
+
+var bucketStore = memorybucket.New()
+
 // A Retriever provides a recording for a given game ID and region.
 // A nil recording should be returned if the recording does not exist.
 type Retriever func(region, gameId string) *recording.Recording
 
 type requestHandler struct {
 	retriever Retriever
+	// Track how often a client has been making requests, using the leaky
+	// bucket algorithm so that if the same client spectates again after a while,
+	// we consider them a new client.
+	newClientBuckets map[client]leakybucket.Bucket
 }
 
 type httpWriterPipe struct {
@@ -107,7 +127,35 @@ func (rh requestHandler) getLastChunkInfo(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if ps.ByName("end") == "0" {
+
+	// Identify the client by the IP/gameID tuple
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	c := client{
+		IP:     ip,
+		gameID: ps.ByName("id"),
+	}
+
+	if rh.newClientBuckets[c] == nil {
+		// A normal spectator client should make request to this endpoint once every 10 seconds.
+		// Therefore, we use the more conservative number of 3 here, meaning that a client is
+		// considered new if it hasn't made 3 requests in the last minute.
+		bucket, err := bucketStore.Create(
+			fmt.Sprintf("%s-%s", r.RemoteAddr, ps.ByName("id")),
+			3,
+			time.Minute,
+		)
+		if err != nil {
+			rec.RetrieveLastChunkInfo().WriteTo(w)
+			return
+		}
+		rh.newClientBuckets[c] = bucket
+	}
+
+	// We try to figure out if the client is a new or not.  If the client is new, we "pretend"
+	// that the last available chunk is one of the first few chunks, so that the spectator client
+	// would start playing from the beginning.  Otherwise, we return the real last available chunk.
+	_, err := rh.newClientBuckets[c].Add(1)
+	if err != nil {
 		rec.RetrieveLastChunkInfo().WriteTo(w)
 	} else {
 		rec.RetrieveFirstChunkInfo().WriteTo(w)
@@ -198,7 +246,10 @@ func (rh requestHandler) getKeyFrame(w http.ResponseWriter, r *http.Request, ps 
 
 // Router returns a http.Handler that handles requests for recorded data.
 func Router(retriever Retriever) http.Handler {
-	handler := requestHandler{retriever}
+	handler := requestHandler{
+		retriever:        retriever,
+		newClientBuckets: make(map[client]leakybucket.Bucket),
+	}
 
 	router := httprouter.New()
 	router.GET(PathHeader+"/version", handler.version)
