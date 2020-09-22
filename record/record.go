@@ -15,7 +15,7 @@ import (
 var platformURLs = map[string]string{
 	"NA1":  "http://spectator.na.lol.riotgames.com:80",
 	"OC1":  "http://spectator.oc1.lol.riotgames.com:80",
-	"EUN1": "http://spectator.eu.lol.riotgames.com:8088",
+	"EUN1": "http://spectator.eu.lol.riotgames.com:80",
 	"EUW1": "http://spectator.euw1.lol.riotgames.com:80",
 	"KR":   "http://spectator.kr.lol.riotgames.com:80",
 	"BR1":  "http://spectator.br.lol.riotgames.com:80",
@@ -23,7 +23,7 @@ var platformURLs = map[string]string{
 	"LA2":  "http://spectator.la2.lol.riotgames.com:80",
 	"RU":   "http://spectator.ru.lol.riotgames.com:80",
 	"TR1":  "http://spectator.tr.lol.riotgames.com:80",
-	"PBE1": "http://spectator.pbe1.lol.riotgames.com:8088",
+	"PBE1": "http://spectator.pbe1.lol.riotgames.com:80",
 }
 
 type recorder struct {
